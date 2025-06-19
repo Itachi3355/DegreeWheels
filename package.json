@@ -24,6 +24,7 @@
     "react-map-gl": "^8.0.4",
     "react-router-dom": "^6.8.1",
     "react-scripts": "^0.0.0",
+    "serve": "^14.2.4",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
