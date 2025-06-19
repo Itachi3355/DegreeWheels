@@ -1,0 +1,16 @@
+{
+  "short_name": "RideShare",
+  "name": "RideShare Application",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4CAF50",
+  "background_color": "#FFFFFF",
+  "description": "A community-driven, free ride-sharing platform connecting students for eco-friendly transportation."
+}
