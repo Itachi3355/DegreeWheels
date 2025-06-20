@@ -6,10 +6,10 @@ DegreeWheels is the premier rideshare platform designed specifically for univers
 
 ## 🌟 The MMSS Philosophy
 
-- **🤝 MEET** - Connect with fellow students and build lasting friendships
-- **🚗 MOVE** - Get around campus and beyond efficiently and affordably  
-- **🤗 SHARE** - Share rides, costs, and experiences with your peers
-- **📚 STUDY** - Turn travel time into study time with like-minded students
+- **🤝 MEET** - Connect with fellow students and build lasting friendships.
+- **🚗 MOVE** - Get around campus and beyond efficiently and affordably.
+- **🤗 SHARE** - Share rides, costs, and experiences with your peers.
+- **📚 SAVE** - Save money and resources by carpooling.
 
 ## ✨ Features
 
