@@ -10,9 +10,8 @@ import LocationInput from '../common/LocationInput'
 import Map from '../common/Map'
 import toast from 'react-hot-toast'
 import BookingModal from './BookingModal'
-import { trackRideSearch, trackRideOffer } from '../../utils/analytics'
-import { findCompatibleRides } from '../../utils/matchingAlgorithm'
-
+// ❌ REMOVE: import { findCompatibleRides } from '../../utils/matchingAlgorithm'
+//
 const RideSearch = () => {
   const { user, profile } = useAuth()
   const { 
@@ -49,6 +48,10 @@ const RideSearch = () => {
   const [showBookingModal, setShowBookingModal] = useState(false)
   const [showOfferedRequests, setShowOfferedRequests] = useState(false)
 
+  // Details modal state
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState(null)
+
   // Status filter options
   const statusOptions = [
     { value: 'available', label: 'Available Requests' },
@@ -58,44 +61,47 @@ const RideSearch = () => {
 
   // Offer ride function
   const handleOfferRide = async (request) => {
-    if (!user) {
-      toast.error('Please login to offer a ride')
-      return
-    }
-
-    if (request.requester_id === user.id) {
-      toast.error('You cannot offer a ride to yourself')
-      return
-    }
+    console.log('🚗 Creating ride offer for request:', request.id)
 
     try {
-      console.log('🚗 Creating ride offer for request:', request.id)
+      // ✅ ADD: Check for existing duplicate rides
+      const { data: existingRides, error: checkError } = await supabase
+        .from('rides')
+        .select('id')
+        .eq('driver_id', user.id)
+        .eq('origin', request.origin)
+        .eq('destination', request.destination)
+        .eq('departure_time', request.preferred_departure_time || new Date().toISOString())
+        .eq('status', 'active')
+
+      if (checkError) throw checkError
+
+      if (existingRides && existingRides.length > 0) {
+        toast.error('You already have an active ride for this route and time!')
+        return
+      }
+
+      // ✅ FIX: Use the request's preferred_departure_time or set a default
+      const departureTime = request.preferred_departure_time || new Date().toISOString()
       
-      // 🔧 Use the EXACT same pattern as RideForm.jsx and RideOffer.jsx
       const rideData = {
         driver_id: user.id,
         origin: request.origin,
         destination: request.destination,
-        departure_time: request.departure_time,
-        available_seats: 4,
-        total_seats: 4, // Required field
-        notes: `Free ride offered in response to passenger request from ${request.origin} to ${request.destination}`,
+        departure_time: departureTime, // ✅ FIX: Ensure this is never undefined
+        available_seats: 4, // Default value, can be made configurable
+        total_seats: 4,
+        notes: `Ride offered in response to passenger request`,
         status: 'active',
-        created_at: new Date().toISOString()
-      }
-
-      // Add coordinates if available
-      if (request.origin_coordinates) {
-        rideData.origin_coordinates = request.origin_coordinates
-      }
-      if (request.destination_coordinates) {
-        rideData.destination_coordinates = request.destination_coordinates
+        created_at: new Date().toISOString(),
+        // Add coordinates if available
+        ...(request.origin_coordinates && { origin_coordinates: request.origin_coordinates }),
+        ...(request.destination_coordinates && { destination_coordinates: request.destination_coordinates })
       }
 
       console.log('🔧 Creating ride with data:', rideData)
 
-      // Create ride using the same pattern as other components
-      const { data: newRide, error: rideError } = await supabase
+      const { data: ride, error: rideError } = await supabase
         .from('rides')
         .insert([rideData])
         .select()
@@ -106,85 +112,57 @@ const RideSearch = () => {
         throw rideError
       }
 
-      console.log('✅ Ride created successfully:', newRide.id)
+      console.log('✅ Ride created:', ride)
 
-      // Step 2: Create a confirmed booking
+      // ✅ FIX: Create booking using correct table and fields
       const bookingData = {
-        ride_id: newRide.id,
-        passenger_id: request.requester_id,
-        status: 'confirmed', // 🔧 CHANGE: Use 'confirmed' instead of 'accepted'
-        seats_requested: request.seats_needed || 1,
-        created_at: new Date().toISOString() // 🔧 ADD: Consistent timestamp
+        ride_id: ride.id,
+        passenger_id: request.passenger_id,
+        driver_id: user.id,
+        seats_requested: 1,
+        pickup_notes: `Auto-booking for ride offer response`,
+        status: 'pending',
+        created_at: new Date().toISOString()
       }
 
       const { data: booking, error: bookingError } = await supabase
-        .from('ride_bookings')
+        .from('ride_bookings')  // ✅ CORRECT TABLE NAME
         .insert([bookingData])
         .select()
         .single()
 
       if (bookingError) {
         console.error('❌ Error creating booking:', bookingError)
-        // Don't throw - ride was created successfully
-        console.warn('Booking creation failed, but ride was created')
-      } else {
-        console.log('✅ Booking created:', booking.id)
+        throw bookingError
       }
 
-      // Step 3: Update request status to matched
+      console.log('✅ Booking created:', booking)
+
+      // Update request status to 'matched'
       const { error: updateError } = await supabase
-        .from('ride_requests')
+        .from('passenger_ride_requests')
         .update({ 
-          status: 'matched',
-          updated_at: new Date().toISOString() // 🔧 ADD: Update timestamp
+          status: 'matched', // ✅ This hides it from the list
+          matched_ride_id: ride.id, // ✅ Track which ride matched
+          updated_at: new Date().toISOString()
         })
         .eq('id', request.id)
 
       if (updateError) {
-        console.warn('⚠️ Request update warning:', updateError)
+        console.error('❌ Error updating request:', updateError)
+        throw updateError
       }
 
-      // Step 4: Create notification (simplified)
-      const { error: notifyError } = await supabase
-        .from('notifications')
-        .insert([{
-          user_id: request.requester_id,
-          type: 'ride_offer',
-          title: 'Free Ride Offer!',
-          message: `${user.email} has offered you a free ride from ${request.origin} to ${request.destination}!`,
-          data: {
-            ride_id: newRide.id,
-            driver_email: user.email,
-            contact_info: user.email
-          },
-          created_at: new Date().toISOString() // 🔧 ADD: Consistent timestamp
-        }])
-
-      if (notifyError) {
-        console.warn('⚠️ Notification error (non-critical):', notifyError)
-      }
-
-      console.log('✅ Free ride offer completed successfully')
-      
-      toast.success('🚗 Free ride offered successfully! The passenger will be notified.', {
-        duration: 4000
-      })
+      toast.success('Ride offer sent successfully!')
       
       // Refresh data
-      refetch()
-      
+      if (refetch) {  // ✅ Use refetch instead of refreshData
+        await refetch()
+      }
+
     } catch (error) {
       console.error('❌ Error offering ride:', error)
-      
-      // Enhanced error handling
-      if (error.code === '23502') {
-        const field = error.message.match(/column "([^"]+)"/)?.[1] || 'unknown field'
-        toast.error(`Missing required field: ${field}. Please contact support.`)
-      } else if (error.code === 'PGRST204') {
-        toast.error('Database schema error. Please contact support.')
-      } else {
-        toast.error(`Failed to offer ride: ${error.message}`)
-      }
+      toast.error(`Failed to offer ride: ${error.message}`)
     }
   }
 
@@ -218,6 +196,76 @@ const RideSearch = () => {
     setShowBookingModal(true)
   }, [])
 
+  const handleViewDetails = (request) => {
+    console.log('View details:', request)
+    
+    // ✅ FIX: Create a proper details modal or navigation
+    setSelectedRequest(request)
+    setShowDetailsModal(true)
+  }
+
+  // Distance calculation function
+  const calculateDistance = useMemo(() => {
+    return (originCoords, destCoords) => {
+      if (!originCoords || !destCoords) return null
+    
+      try {
+        // ✅ STANDARDIZE: Parse coordinates consistently
+        let originLatLng, destLatLng
+        
+        if (typeof originCoords === 'string') {
+          // Handle string format: "(-96.944127,32.82938)"
+          const cleanOrigin = originCoords.replace(/[()]/g, '').split(',').map(Number)
+          originLatLng = [cleanOrigin[1], cleanOrigin[0]] // [lat, lng]
+        } else if (Array.isArray(originCoords)) {
+          // Handle array format: [-96.944127, 32.82938]
+          originLatLng = [originCoords[1], originCoords[0]] // [lat, lng]
+        } else {
+          return null
+        }
+        
+        if (typeof destCoords === 'string') {
+          // Handle string format: "(-96.944127,32.82938)"
+          const cleanDest = destCoords.replace(/[()]/g, '').split(',').map(Number)
+          destLatLng = [cleanDest[1], cleanDest[0]] // [lat, lng]
+        } else if (Array.isArray(destCoords)) {
+          // Handle array format: [-96.944127, 32.82938]
+          destLatLng = [destCoords[1], destCoords[0]] // [lat, lng]
+        } else {
+          return null
+        }
+        
+        console.log('🔧 Distance calculation:', {
+          origin: originLatLng,
+          dest: destLatLng,
+          originString: originCoords,
+          destString: destCoords
+        })
+        
+        const [lat1, lon1] = originLatLng
+        const [lat2, lon2] = destLatLng
+        
+        const R = 3959 // Earth's radius in miles
+        const dLat = (lat2 - lat1) * Math.PI / 180
+        const dLon = (lon2 - lon1) * Math.PI / 180
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2)
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+        const distance = R * c
+        
+        const result = Math.round(distance * 10) / 10 // Round to 1 decimal place
+        console.log('🔧 Calculated distance:', result, 'miles')
+        return result
+        
+      } catch (error) {
+        console.error('Error calculating distance:', error)
+        return null
+      }
+    }
+  }, []) // ✅ Empty dependency array - function doesn't change
+
   // Filtered data
   const filteredRides = useMemo(() => {
     if (!rides) return []
@@ -243,26 +291,29 @@ const RideSearch = () => {
     })
   }, [rides, searchQuery, filterDate, searchFilters])
 
+  // Filter requests based on activeTab and status
   const filteredRequests = useMemo(() => {
-    if (!requests) return []
+    if (!requests || requests.length === 0) return []
     
     return requests.filter(request => {
-      const matchesSearch = !searchQuery || 
-        request.origin?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        request.destination?.toLowerCase().includes(searchQuery.toLowerCase())
+      // ✅ HIDE matched/completed requests from the list
+      if (request.status === 'matched' || request.status === 'completed') {
+        return false
+      }
       
-      const matchesDate = !filterDate || 
-        request.departure_time?.startsWith(filterDate)
-      
-      const matchesOrigin = !searchFilters.origin ||
+      // Apply search filters
+      const matchesOrigin = !searchFilters.origin || 
         request.origin?.toLowerCase().includes(searchFilters.origin.toLowerCase())
-        
-      const matchesDestination = !searchFilters.destination ||
+    
+      const matchesDestination = !searchFilters.destination || 
         request.destination?.toLowerCase().includes(searchFilters.destination.toLowerCase())
-      
-      return matchesSearch && matchesDate && matchesOrigin && matchesDestination
+    
+      const matchesStatus = searchFilters.status === 'all' || 
+        request.status === searchFilters.status
+    
+      return matchesOrigin && matchesDestination && matchesStatus
     })
-  }, [requests, searchQuery, filterDate, searchFilters])
+  }, [requests, searchFilters])
 
   // Count variables
   const ridesCount = filteredRides?.length || 0
@@ -278,6 +329,8 @@ const RideSearch = () => {
       })
     }
   }, [activeTab, ridesCount, requestsCount])
+
+  console.log('RideSearch render:', { activeTab, ridesCount: rides?.length, requestsCount: requests?.length })
 
   if (loading) {
     return (
@@ -528,56 +581,69 @@ const RideSearch = () => {
                 ) : (
                   <div className="space-y-4">
                     {filteredRequests.map((request) => (
-                      <div key={request.id} className="bg-white rounded-lg shadow-md p-6">
-                        <div className="flex justify-between items-start">
+                      <div key={request.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                        <div className="flex justify-between items-start mb-4">
                           <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-3">
-                              <MapPinIcon className="w-5 h-5 text-gray-500" />
-                              <span className="text-lg font-medium text-gray-900">
-                                {request.origin} → {request.destination}
-                              </span>
+                            <div className="flex items-center mb-2">
+                              <MapPinIcon className="w-5 h-5 text-green-600 mr-2" />
+                              <span className="font-medium text-gray-900">{request.origin}</span>
+                            </div>
+                            <div className="flex items-center mb-2">
+                              <MapPinIcon className="w-5 h-5 text-red-600 mr-2" />
+                              <span className="font-medium text-gray-900">{request.destination}</span>
                             </div>
                             
-                            <div className="flex items-center space-x-4 text-sm text-gray-600 mb-4">
-                              <div className="flex items-center">
-                                <ClockIcon className="w-4 h-4 mr-1" />
+                            {/* ✅ FIX: Properly format date and add distance */}
+                            <div className="flex items-center text-sm text-gray-600 mb-2">
+                              <ClockIcon className="w-4 h-4 mr-1" />
+                              {request.preferred_departure_time ? (
                                 <span>
-                                  {new Date(request.departure_time).toLocaleDateString()} at{' '}
-                                  {new Date(request.departure_time).toLocaleTimeString([], { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
+                                  {new Date(request.preferred_departure_time).toLocaleDateString()} at{' '}
+                                  {new Date(request.preferred_departure_time).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
                                   })}
                                 </span>
-                              </div>
-                              
-                              <div className="flex items-center">
-                                <CurrencyDollarIcon className="w-4 h-4 mr-1" />
-                                <span>Budget: ${request.max_price || 'Flexible'}</span>
-                              </div>
-                              
-                              <div className="flex items-center">
-                                <UserIcon className="w-4 h-4 mr-1" />
-                                <span>{request.passengers || 1} passenger(s)</span>
-                              </div>
+                              ) : (
+                                <span>Flexible timing</span>
+                              )}
                             </div>
 
+                            {/* ✅ ADD: Distance calculation */}
+                            {request.origin_coordinates && request.destination_coordinates && (
+                              <div className="flex items-center text-sm text-gray-600 mb-2">
+                                <span className="text-indigo-600 font-medium">
+                                  ~{calculateDistance(
+                                    request.origin_coordinates,    // Pass as string
+                                    request.destination_coordinates // Pass as string
+                                  )} miles
+                                </span>
+                              </div>
+                            )}
+
+                            {/* ✅ REMOVE: Budget line since you want it removed */}
+                            
+                            <div className="flex items-center text-sm text-gray-600 mb-2">
+                              <UserIcon className="w-4 h-4 mr-1" />
+                              <span>{request.passenger_count || 1} passenger(s)</span>
+                            </div>
+                            
                             {request.notes && (
-                              <p className="text-gray-700 mb-4">{request.notes}</p>
+                              <p className="text-sm text-gray-600 italic mt-2">{request.notes}</p>
                             )}
                           </div>
                         </div>
-
-                        <div className="flex gap-2">
+                        
+                        <div className="flex space-x-2">
                           <button
                             onClick={() => handleOfferRide(request)}
-                            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors"
+                            className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
                           >
                             Offer Ride
                           </button>
-                          
                           <button
-                            onClick={() => console.log('View details:', request)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+                            onClick={() => handleViewDetails(request)}
+                            className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                           >
                             Details
                           </button>
@@ -695,36 +761,47 @@ const RideSearch = () => {
                               </span>
                             </div>
                             
+                            {/* ✅ FIX: Show ride status clearly */}
                             <div className="flex items-center">
-                              <UserIcon className="w-4 h-4 mr-1" />
-                              <span>{ride.available_seats} seats</span>
-                            </div>
-
-                            {/* Free ride indicator */}
-                            <div className="flex items-center">
-                              <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
-                                FREE
+                              <span className={`h-2.5 w-2.5 rounded-full mr-2 ${ride.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {ride.status === 'active' ? 'Active' : 'Inactive'}
                               </span>
                             </div>
                           </div>
-
-                          {ride.description && (
-                            <p className="text-gray-700 mb-4">{ride.description}</p>
-                          )}
+                          
+                          {/* ✅ ADD: Driver details section */}
+                          <div className="border-t border-gray-200 pt-4 mt-4">
+                            <p className="text-sm text-gray-500 mb-2">Driver Details</p>
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                <img 
+                                  src={profile?.avatar_url || '/default-avatar.png'} 
+                                  alt="Driver Avatar" 
+                                  className="h-10 w-10 rounded-full"
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">{profile?.full_name || 'N/A'}</p>
+                                <p className="text-xs text-gray-500">
+                                  {profile?.vehicle_type ? `${profile.vehicle_type} - ${profile.license_plate}` : 'Vehicle details not provided'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-
-                      <div className="flex gap-2">
+                      
+                      <div className="flex space-x-2">
                         <button
                           onClick={() => handleBookRide(ride)}
-                          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                         >
-                          Book This Ride
+                          Book Now
                         </button>
-                        
                         <button
                           onClick={() => console.log('View details:', ride)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+                          className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                           Details
                         </button>
@@ -740,16 +817,13 @@ const RideSearch = () => {
                     </div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No available rides</h3>
                     <p className="text-gray-600 mb-4">
-                      There are no available rides that match your search criteria
+                      Rides will appear here when they are available
                     </p>
                     <button
-                      onClick={() => {
-                        setActiveTab('requests')
-                        setViewMode('list')
-                      }}
-                      className="bg-purple-600 text-white px-6 py-2 rounded-md hover:bg-purple-700"
+                      onClick={() => setActiveTab('requests')}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm"
                     >
-                      View Passenger Requests
+                      Check Passenger Requests
                     </button>
                   </div>
                 )}
@@ -757,17 +831,73 @@ const RideSearch = () => {
             )}
           </div>
         )}
-      </div>
 
-      {/* Booking Modal */}
-      <BookingModal
-        open={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-        ride={selectedRide}
-        user={user}
-      />
+        {/* Booking Modal */}
+        <BookingModal 
+          open={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          ride={selectedRide}
+          user={user}
+        />
+
+        {/* Details Modal - For passenger requests */}
+        {showDetailsModal && selectedRequest && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-auto">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Request Details</h3>
+                
+                {/* Request info */}
+                <div className="space-y-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">From:</span>
+                    <p className="text-gray-900">{selectedRequest.origin}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">To:</span>
+                    <p className="text-gray-900">{selectedRequest.destination}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Date & Time:</span>
+                    <p className="text-gray-900">
+                      {new Date(selectedRequest.preferred_departure_time).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Passengers:</span>
+                    <p className="text-gray-900">{selectedRequest.passenger_count}</p>
+                  </div>
+                  {selectedRequest.notes && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">Notes:</span>
+                      <p className="text-gray-900">{selectedRequest.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 px-6 py-4 rounded-b-lg">
+                <div className="flex justify-end space-x-2">
+                  <button
+                    onClick={() => setShowDetailsModal(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => handleOfferRide(selectedRequest)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                    Offer Ride
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-export default RideSearch
+export default React.memo(RideSearch)

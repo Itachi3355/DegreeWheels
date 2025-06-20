@@ -134,12 +134,10 @@ const PassengerRequestCard = ({ request, onOfferSent, onRequestUpdate }) => {
               </span>
             </div>
             
-            {request.max_price && (
-              <div className="flex items-center">
-                <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                <span>Budget: ${request.max_price}</span>
-              </div>
-            )}
+            <div className="flex items-center">
+              <CurrencyDollarIcon className="w-4 h-4 mr-2" />
+              <span>Budget: Negotiable</span>
+            </div>
           </div>
 
           {/* Passenger Info */}

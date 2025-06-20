@@ -1,10 +1,11 @@
 {
-  "name": "rideshare-app",
-  "version": "1.0.0",
+  "name": "degreewheels-app",
+  "version": "1.1.0",
+  "description": "DegreeWheels - University rideshare platform. Meet, Move, Share, Study (MMSS)",
   "private": true,
-  "description": "University rideshare platform for students",
-  "homepage": ".",
+  "homepage": "https://degreewheels.com",
   "dependencies": {
+    "@analytics/google-analytics": "^1.1.0",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.0.18",
     "@mapbox/mapbox-gl-geocoder": "^5.0.3",
@@ -12,8 +13,11 @@
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
     "date-fns": "^2.30.0",
     "framer-motion": "^10.18.0",
+    "goober": "^2.1.16",
     "lucide-react": "^0.518.0",
     "mapbox-gl": "^2.15.0",
     "prop-types": "^15.8.1",
@@ -23,7 +27,6 @@
     "react-hot-toast": "^2.5.2",
     "react-map-gl": "^8.0.4",
     "react-router-dom": "^6.8.1",
-    "react-scripts": "^5.0.1",
     "serve": "^14.2.4",
     "web-vitals": "^2.1.4"
   },
@@ -50,6 +53,7 @@
     "@vitejs/plugin-react": "^4.5.2",
     "autoprefixer": "^10.4.16",
     "cross-env": "^7.0.3",
+    "javascript-obfuscator": "^4.1.1",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5",
     "vite": "^6.3.5"

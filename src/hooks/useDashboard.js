@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { supabase } from '../lib/supabase'
 
 export const useDashboard = () => {
   const { user } = useAuth()
@@ -10,99 +10,77 @@ export const useDashboard = () => {
     myBookings: [],
     incomingRequests: []
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [hasInitialLoad, setHasInitialLoad] = useState(false)
+  
+  const fetchingRef = useRef(false)
+  const lastFetchRef = useRef(0)
+  const userIdRef = useRef(null)
 
-  const fetchDashboardData = useCallback(async () => {
-    if (!user?.id) return
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
 
+    const now = Date.now()
+    if (!forceRefresh && (fetchingRef.current || (now - lastFetchRef.current) < 1000)) {
+      return
+    }
+
+    fetchingRef.current = true
+    lastFetchRef.current = now
+    
     try {
       setLoading(true)
-      console.log('Fetching dashboard data for user:', user.id)
 
-      // Fetch all data in parallel - GET FULL DATA, NOT JUST COUNTS
-      const [
-        ridesResponse,
-        requestsResponse,
-        bookingsResponse,
-        incomingResponse
-      ] = await Promise.all([
-        // My rides (as driver) - GET FULL DATA
+      const [ridesResponse, requestsResponse, bookingsResponse, incomingResponse] = await Promise.all([
         supabase
           .from('rides')
-          .select(`
-            *,
-            driver:profiles!rides_driver_id_fkey(*),
-            passengers:ride_bookings(
-              *,
-              passenger:profiles!ride_bookings_passenger_id_fkey(*)
-            )
-          `)
+          .select(`*, driver:profiles!rides_driver_id_fkey(*), passengers:ride_bookings(*, passenger:profiles!ride_bookings_passenger_id_fkey(*))`)
           .eq('driver_id', user.id)
           .order('departure_time', { ascending: false }),
         
-        // My ride requests - GET FULL DATA
         supabase
-          .from('ride_requests')
-          .select(`
-            *,
-            requester:profiles!ride_requests_requester_id_fkey(*)
-          `)
-          .eq('requester_id', user.id)
-          .order('created_at', { ascending: false }),
-        
-        // My bookings (as passenger) - GET FULL DATA
-        supabase
-          .from('ride_bookings')
-          .select(`
-            *,
-            ride:rides(*,
-              driver:profiles!rides_driver_id_fkey(*)
-            ),
-            passenger:profiles!ride_bookings_passenger_id_fkey(*)
-          `)
+          .from('passenger_ride_requests')
+          .select(`*, passenger:profiles!passenger_ride_requests_passenger_id_fkey(*)`)
           .eq('passenger_id', user.id)
           .order('created_at', { ascending: false }),
         
-        // Incoming requests (for my rides) - GET FULL DATA
         supabase
           .from('ride_bookings')
-          .select(`
-            *,
-            ride:rides(*),
-            passenger:profiles!ride_bookings_passenger_id_fkey(*)
-          `)
+          .select(`*, ride:rides(*, driver:profiles!rides_driver_id_fkey(*)), passenger:profiles!ride_bookings_passenger_id_fkey(*)`)
+          .eq('passenger_id', user.id)
+          .order('created_at', { ascending: false }),
+        
+        supabase
+          .from('ride_bookings')
+          .select(`*, ride:rides(*), passenger:profiles!ride_bookings_passenger_id_fkey(*)`)
           .eq('driver_id', user.id)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
       ])
 
-      // Check for errors
       if (ridesResponse.error) throw ridesResponse.error
       if (requestsResponse.error) throw requestsResponse.error
       if (bookingsResponse.error) throw bookingsResponse.error
       if (incomingResponse.error) throw incomingResponse.error
 
-      const dashboardData = {
+      const newDashboardData = {
         myRides: ridesResponse.data || [],
         myRequests: requestsResponse.data || [],
         myBookings: bookingsResponse.data || [],
         incomingRequests: incomingResponse.data || []
       }
 
-      console.log('✅ Dashboard data fetched:', {
-        myRides: dashboardData.myRides.length,
-        myRequests: dashboardData.myRequests.length,
-        myBookings: dashboardData.myBookings.length,
-        incomingRequests: dashboardData.incomingRequests.length
-      })
-
-      setDashboardData(dashboardData)
+      setDashboardData(newDashboardData)
       setError(null)
+      setHasInitialLoad(true)
 
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-      setError(error.message)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+      setError(err.message)
       setDashboardData({
         myRides: [],
         myRequests: [],
@@ -111,8 +89,16 @@ export const useDashboard = () => {
       })
     } finally {
       setLoading(false)
+      fetchingRef.current = false
     }
-  }, [user?.id])
+  }, [])
+
+  useEffect(() => {
+    if (user?.id && (userIdRef.current !== user.id || !hasInitialLoad)) {
+      userIdRef.current = user.id
+      fetchDashboardData()
+    }
+  }, [user?.id, hasInitialLoad])
 
   // Approve booking request
   const approveRequest = async (requestId) => {
@@ -128,7 +114,7 @@ export const useDashboard = () => {
 
       if (error) throw error
       
-      await fetchDashboardData() // Refresh data
+      await fetchDashboardData(true) // Force refresh
       return { success: true }
     } catch (error) {
       console.error('Error approving request:', error)
@@ -150,7 +136,7 @@ export const useDashboard = () => {
 
       if (error) throw error
       
-      await fetchDashboardData() // Refresh data
+      await fetchDashboardData(true) // Force refresh
       return { success: true }
     } catch (error) {
       console.error('Error rejecting request:', error)
@@ -172,7 +158,7 @@ export const useDashboard = () => {
 
       if (error) throw error
       
-      await fetchDashboardData() // Refresh data
+      await fetchDashboardData(true) // Force refresh
       return { success: true }
     } catch (error) {
       console.error('Error cancelling request:', error)
@@ -191,7 +177,7 @@ export const useDashboard = () => {
 
       if (error) throw error
       
-      await fetchDashboardData() // Refresh data
+      await fetchDashboardData(true) // Force refresh
       return { success: true }
     } catch (error) {
       console.error('Error deleting ride:', error)
@@ -203,20 +189,20 @@ export const useDashboard = () => {
   const cancelRideRequest = async (requestId) => {
     try {
       const { error } = await supabase
-        .from('ride_requests')
+        .from('passenger_ride_requests')
         .update({ 
           status: 'cancelled',
           updated_at: new Date().toISOString()
         })
         .eq('id', requestId)
-        .eq('requester_id', user.id)
+        .eq('passenger_id', user.id)
 
       if (error) throw error
       
-      await fetchDashboardData() // Refresh data
+      await fetchDashboardData(true) // Force refresh
       return { success: true }
     } catch (error) {
-      console.error('Error cancelling ride request:', error)
+      console.error('Error cancelling request:', error)
       return { success: false, error }
     }
   }
@@ -225,17 +211,17 @@ export const useDashboard = () => {
   const markRequestAsFound = async (requestId) => {
     try {
       const { error } = await supabase
-        .from('ride_requests')
+        .from('passenger_ride_requests')
         .update({ 
           status: 'completed',
           updated_at: new Date().toISOString()
         })
         .eq('id', requestId)
-        .eq('requester_id', user.id)
+        .eq('passenger_id', user.id)
 
       if (error) throw error
       
-      await fetchDashboardData() // Refresh data
+      await fetchDashboardData(true) // Force refresh
       return { success: true }
     } catch (error) {
       console.error('Error marking request as found:', error)
@@ -243,23 +229,32 @@ export const useDashboard = () => {
     }
   }
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [fetchDashboardData])
-
   return {
     loading,
-    error,
     myRides: dashboardData.myRides,
     myRequests: dashboardData.myRequests,
     myBookings: dashboardData.myBookings,
     incomingRequests: dashboardData.incomingRequests,
+    stats: {
+      totalRides: dashboardData.myRides.length,
+      totalRequests: dashboardData.myRequests.length,
+      totalBookings: dashboardData.myBookings.length,
+      incomingCount: dashboardData.incomingRequests.length
+    },
+    fetchDashboardData: () => fetchDashboardData(true),
     approveRequest,
     rejectRequest,
     cancelRequest,
-    deleteRide,
     cancelRideRequest,
     markRequestAsFound,
-    refetch: fetchDashboardData
+    deleteRide,
+    error,
+    refetch: () => {
+      if (!fetchingRef.current) {
+        setLoading(true)
+        lastFetchRef.current = 0
+        fetchDashboardData(true)
+      }
+    }
   }
 }

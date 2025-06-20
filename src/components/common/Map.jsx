@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 
 // Set access token
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN
 
 const Map = ({ 
   rides = [], 
@@ -254,13 +254,18 @@ const Map = ({
           .setPopup(
             new mapboxgl.Popup({ offset: 25 })
               .setHTML(`
-                <div class="p-2">
-                  <h3 class="font-semibold text-green-700">🟢 Pickup</h3>
-                  <p class="text-sm">${ride.origin}</p>
-                  <p class="text-xs text-gray-600">
-                    ${ride.departure_time ? new Date(ride.departure_time).toLocaleDateString() : 'Date TBD'}
+                <div class="p-3">
+                  <h3 class="font-semibold text-green-700 mb-2">🟢 Pickup Location</h3>
+                  <p class="text-sm font-medium mb-1">${ride.origin}</p>
+                  <p class="text-xs text-gray-600 mb-2">
+                    ${ride.departure_time ? new Date(ride.departure_time).toLocaleDateString() : 
+                      ride.preferred_departure_time ? new Date(ride.preferred_departure_time).toLocaleDateString() : 
+                      'Date TBD'}
                   </p>
-                  <p class="text-xs text-blue-600">${ride.available_seats || 0} seats available</p>
+                  <p class="text-xs text-blue-600 font-medium">
+                    📏 Distance: ~${calculateMapDistance(originCoords, destCoords)} miles
+                  </p>
+                  <p class="text-xs text-blue-600">${ride.available_seats || ride.passenger_count || 1} ${ride.available_seats ? 'seats available' : 'passenger(s)'}</p>
                 </div>
               `)
           )
@@ -274,10 +279,16 @@ const Map = ({
           .setPopup(
             new mapboxgl.Popup({ offset: 25 })
               .setHTML(`
-                <div class="p-2">
-                  <h3 class="font-semibold text-red-700">🎯 Destination</h3>
-                  <p class="text-sm">${ride.destination}</p>
-                  <p class="text-xs text-gray-600">Driver: ${ride.driver?.full_name || ride.requester?.full_name || 'Unknown'}</p>
+                <div class="p-3">
+                  <h3 class="font-semibold text-red-700 mb-2">🎯 Destination</h3>
+                  <p class="text-sm font-medium mb-1">${ride.destination}</p>
+                  <p class="text-xs text-gray-600 mb-2">
+                    ${ride.driver?.full_name || ride.passenger?.full_name || ride.requester?.full_name || 'Unknown'}
+                  </p>
+                  <p class="text-xs text-red-600 font-medium">
+                    📏 Distance: ~${calculateMapDistance(originCoords, destCoords)} miles
+                  </p>
+                  ${ride.notes ? `<p class="text-xs text-gray-500 mt-1 italic">"${ride.notes}"</p>` : ''}
                 </div>
               `)
           )
@@ -288,6 +299,43 @@ const Map = ({
 
         markers.current.push(originMarker, destMarker)
         validMarkers += 2
+
+        // Add distance label between markers
+        if (validMarkers >= 2) {
+          const midpoint = [
+            (originCoords[0] + destCoords[0]) / 2,
+            (originCoords[1] + destCoords[1]) / 2
+          ]
+          
+          const distance = calculateMapDistance(originCoords, destCoords)
+          
+          // Create distance label
+          const distanceEl = document.createElement('div')
+          distanceEl.className = 'distance-label'
+          distanceEl.innerHTML = `
+            <div style="
+              background: rgba(255, 255, 255, 0.95); 
+              padding: 4px 8px; 
+              border-radius: 12px; 
+              font-size: 12px; 
+              font-weight: 600; 
+              color: #4F46E5;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              border: 1px solid #E5E7EB;
+            ">
+              📏 ${distance} mi
+            </div>
+          `
+          
+          const distanceMarker = new mapboxgl.Marker({
+            element: distanceEl,
+            anchor: 'center'
+          })
+            .setLngLat(midpoint)
+            .addTo(map.current)
+            
+          markers.current.push(distanceMarker)
+        }
 
       } catch (error) {
         console.error(`❌ Error adding markers for ride ${ride.id}:`, error)
@@ -312,6 +360,68 @@ const Map = ({
     }
 
   }, [rides, mapLoaded, mapError])
+
+  // ✅ ADD: Distance calculation function for map popups
+  const calculateMapDistance = (originCoords, destCoords) => {
+    if (!originCoords || !destCoords) return 'N/A'
+    
+    try {
+      // ✅ STANDARDIZE: Use the same parsing logic as RideSearch
+      let originLatLng, destLatLng
+      
+      // Parse origin coordinates
+      if (typeof originCoords === 'string') {
+        // Handle string format: "(-96.944127,32.82938)"
+        const cleanOrigin = originCoords.replace(/[()]/g, '').split(',').map(Number)
+        originLatLng = [cleanOrigin[1], cleanOrigin[0]] // [lat, lng]
+      } else if (Array.isArray(originCoords)) {
+        // Handle array format: [-96.944127, 32.82938] (lng, lat from Mapbox)
+        originLatLng = [originCoords[1], originCoords[0]] // Convert to [lat, lng]
+      } else {
+        return 'N/A'
+      }
+      
+      // Parse destination coordinates
+      if (typeof destCoords === 'string') {
+        // Handle string format: "(-96.944127,32.82938)"
+        const cleanDest = destCoords.replace(/[()]/g, '').split(',').map(Number)
+        destLatLng = [cleanDest[1], cleanDest[0]] // [lat, lng]
+      } else if (Array.isArray(destCoords)) {
+        // Handle array format: [-96.944127, 32.82938] (lng, lat from Mapbox)
+        destLatLng = [destCoords[1], destCoords[0]] // Convert to [lat, lng]
+      } else {
+        return 'N/A'
+      }
+      
+      console.log('🗺️ Map distance calculation:', {
+        origin: originLatLng,
+        dest: destLatLng,
+        originRaw: originCoords,
+        destRaw: destCoords
+      })
+      
+      const [lat1, lon1] = originLatLng
+      const [lat2, lon2] = destLatLng
+      
+      const R = 3959 // Earth's radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180
+      const dLon = (lon2 - lon1) * Math.PI / 180
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2)
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+      const distance = R * c
+      
+      const result = Math.round(distance * 10) / 10 // Round to 1 decimal place
+      console.log('🗺️ Map calculated distance:', result, 'miles')
+      return result
+      
+    } catch (error) {
+      console.warn('Error calculating map distance:', error)
+      return 'N/A'
+    }
+  }
 
   // Show error state with helpful troubleshooting
   if (mapError) {
@@ -359,15 +469,18 @@ const Map = ({
       )}
 
       {/* Legend */}
-      {mapLoaded && !mapError && (
-        <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-md text-sm z-10"> {/* 🔧 ADD: z-10 for proper layering */}
+      {mapLoaded && !mapError && rides.length > 0 && (
+        <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-md text-sm z-10">
           <div className="flex items-center mb-1">
             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
             <span>Pickup Location</span>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center mb-2">
             <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
             <span>Destination</span>
+          </div>
+          <div className="text-xs text-gray-600 border-t pt-2">
+            📏 Click markers to see distance
           </div>
         </div>
       )}

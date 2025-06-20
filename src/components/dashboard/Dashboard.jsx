@@ -1,337 +1,394 @@
 import React, { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  PlusIcon, 
+  MagnifyingGlassIcon,
+  SparklesIcon,
+  TrophyIcon,
+  MapPinIcon,
+  ClockIcon,
+  UserGroupIcon,
+  CalendarIcon,
+  StarIcon
+} from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
-import { PlusIcon } from '@heroicons/react/24/outline'
-import { useDashboard } from '../../hooks/useDashboard'
 import { useAuth } from '../../contexts/AuthContext'
+import { useDashboard } from '../../hooks/useDashboard'
 import { supabase } from '../../lib/supabase'
-import DashboardStats from './DashboardStats'
+import toast from 'react-hot-toast'
 import MyRides from './MyRides'
 import MyRequests from './MyRequests'
-import IncomingRequests from './IncomingRequests'
 import MyBookings from './MyBookings'
+import IncomingRequests from './IncomingRequests'
+import DashboardStats from './DashboardStats'
 
 const Dashboard = () => {
-  const navigate = useNavigate()
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('overview')
+  const [showWelcome, setShowWelcome] = useState(true)
+  
   const {
     loading,
-    error,
-    myRides = [],
-    myRequests = [],
-    myBookings = [],
-    incomingRequests = [],
-    approveRequest,
-    rejectRequest,
-    cancelRequest,
-    deleteRide,
-    cancelRideRequest,
-    markRequestAsFound,
-    refetch
+    myRides,
+    myRequests,
+    myBookings,
+    incomingRequests,
+    stats,
+    fetchDashboardData,
+    deleteRide  // ✅ ADD this if it exists in useDashboard
   } = useDashboard()
 
-  const [requests, setRequests] = useState([])
-
-  // Fetch user's ride requests
-  const fetchRequests = async () => {
-    if (!user?.id) return
-
+  // ✅ CREATE the missing functions directly
+  const cancelRideRequest = async (requestId) => {
     try {
-      const { data, error } = await supabase
-        .from('ride_requests')
-        .select(`
-          *,
-          requester:profiles!ride_requests_requester_id_fkey(*)
-        `)
-        .eq('requester_id', user.id)
-        .order('created_at', { ascending: false })
+      const { error } = await supabase
+        .from('passenger_ride_requests')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .eq('passenger_id', user.id) // ✅ Use correct column
 
-      if (error) {
-        console.error('Error fetching requests:', error)
-        return
-      }
-
-      console.log('✅ Fetched ride requests:', data)
-      setRequests(data || [])
-    } catch (err) {
-      console.error('Error:', err)
+      if (error) throw error
+      
+      await fetchDashboardData()
+      toast.success('Request cancelled successfully')
+      return { success: true }
+    } catch (error) {
+      console.error('Error cancelling request:', error)
+      toast.error('Failed to cancel request')
+      return { success: false, error }
     }
   }
 
-  useEffect(() => {
-    fetchRequests()
-  }, [user?.id])
+  const markRequestAsFound = async (requestId) => {
+    try {
+      const { error } = await supabase
+        .from('passenger_ride_requests')
+        .update({ 
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .eq('passenger_id', user.id) // ✅ Use correct column
 
-  const [activeTab, setActiveTab] = useState('overview')
+      if (error) throw error
+      
+      await fetchDashboardData()
+      toast.success('Request marked as completed')
+      return { success: true }
+    } catch (error) {
+      console.error('Error marking request as found:', error)
+      toast.error('Failed to update request')
+      return { success: false, error }
+    }
+  }
 
-  const tabs = [
-    { id: 'overview', name: 'Overview', count: null },
-    { id: 'my-rides', name: 'My Rides', count: myRides.length },
-    { id: 'my-requests', name: 'My Requests', count: myRequests.length },
-    { id: 'my-bookings', name: 'My Bookings', count: myBookings.length },
-    { id: 'incoming', name: 'Incoming Requests', count: incomingRequests.length }
+  // ✅ MOVE renderTabContent INSIDE the component so it can access the functions
+  const renderTabContent = (activeTab, data) => {
+    const { myRides, myRequests, myBookings, incomingRequests } = data
+
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <div className="space-y-6">
+            <DashboardStats 
+              myRides={myRides}
+              myRequests={myRequests}
+              incomingRequests={incomingRequests}
+            />
+            {/* Recent Activity Preview */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white/70 backdrop-blur-lg rounded-2xl p-6 border border-white/50 shadow-lg">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Rides</h3>
+                {myRides?.slice(0, 3).map((ride) => (
+                  <div key={ride.id} className="flex items-center py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{ride.origin} → {ride.destination}</p>
+                      <p className="text-sm text-gray-600">{new Date(ride.departure_time).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+                {myRides?.length === 0 && (
+                  <p className="text-gray-500 text-center py-4">No rides yet</p>
+                )}
+              </div>
+              
+              <div className="bg-white/70 backdrop-blur-lg rounded-2xl p-6 border border-white/50 shadow-lg">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Requests</h3>
+                {myRequests?.slice(0, 3).map((request) => (
+                  <div key={request.id} className="flex items-center py-2 border-b border-gray-100 last:border-0">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{request.origin} → {request.destination}</p>
+                      <p className="text-sm text-gray-600">{new Date(request.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+                {myRequests?.length === 0 && (
+                  <p className="text-gray-500 text-center py-4">No requests yet</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      case 'rides':
+        return (
+          <MyRides 
+            rides={myRides} 
+            onDeleteRide={deleteRide}
+            onRefetch={fetchDashboardData}
+          />
+        )
+      case 'requests':
+        return (
+          <MyRequests 
+            requests={myRequests} 
+            onCancelRequest={cancelRideRequest}
+            onMarkAsFound={markRequestAsFound}
+            onRefetch={fetchDashboardData}
+          />
+        )
+      case 'bookings':
+        // 🔧 FIX: Don't pass bookings as prop AND don't trigger multiple fetches
+        return (
+          <MyBookings 
+            key={`bookings-${activeTab}`}  // Stable key based on tab, not time
+            onBookingUpdate={fetchDashboardData}
+          />
+        )
+      default:
+        return null
+    }
+  }
+
+  // Quick actions
+  const quickActions = [
+    {
+      title: 'Offer a Ride',
+      subtitle: 'Share your journey with fellow students',
+      icon: PlusIcon,
+      gradient: 'from-blue-500 to-cyan-500',
+      action: () => navigate('/offer-ride')
+    },
+    {
+      title: 'Find a Ride',
+      subtitle: 'Browse available rides near you',
+      icon: MagnifyingGlassIcon,
+      gradient: 'from-green-500 to-emerald-500',
+      action: () => navigate('/search')
+    },
+    {
+      title: 'Request a Ride',
+      subtitle: 'Post your ride request',
+      icon: SparklesIcon,
+      gradient: 'from-purple-500 to-pink-500',
+      action: () => navigate('/request-ride')
+    }
   ]
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const tab = urlParams.get('tab')
-    if (tab && ['overview', 'rides', 'requests', 'bookings'].includes(tab)) {
-      setActiveTab(tab)
-      console.log('🎯 Dashboard tab set from URL:', tab)
-    }
-  }, [])
+  // Navigation tabs
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: TrophyIcon, count: 0 },
+    { id: 'rides', label: 'My Rides', icon: UserGroupIcon, count: myRides?.length },
+    { id: 'requests', label: 'Requests', icon: MapPinIcon, count: myRequests?.length },
+    { id: 'bookings', label: 'Bookings', icon: CalendarIcon, count: myBookings?.length }
+  ]
+
+  const handleTabClick = (e, tab) => {
+    e.preventDefault()
+    setActiveTab(tab)
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p>Loading your dashboard...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Dashboard</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
-            >
-              Try Again
-            </button>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 pt-20">
+        <div className="flex items-center justify-center h-96">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full"
+          />
+          <span className="ml-4 text-lg text-gray-600">Loading your dashboard...</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome back, {user?.profile?.full_name || user?.email}!
-            </h1>
-            <p className="text-gray-600 mt-1">Manage your rides and requests</p>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={() => navigate('/search')}
-              className="bg-white text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+        
+        {/* Welcome Section with Modern Glass Card */}
+        <AnimatePresence>
+          {showWelcome && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="relative mb-8 overflow-hidden"
             >
-              Find Rides
-            </button>
-            <button
-              onClick={() => navigate('/offer-ride')}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
+              <div className="bg-white/60 backdrop-blur-lg rounded-3xl p-8 border border-white/50 shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+                      <span className="text-2xl font-bold text-white">
+                        {user?.profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                    <div>
+                      <motion.h1 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-3xl font-bold text-gray-900"
+                      >
+                        Welcome back, {user?.profile?.full_name || user?.email?.split('@')[0]}! 🚗
+                      </motion.h1>
+                      <p className="text-gray-600 text-lg">Ready for your next adventure?</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowWelcome(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Quick Actions with Hover Effects */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+        >
+          {quickActions.map((action, index) => (
+            <motion.button
+              key={action.title}
+              whileHover={{ y: -8, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={action.action}
+              className="group bg-white/70 backdrop-blur-lg rounded-2xl p-6 border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 text-left"
             >
-              <PlusIcon className="w-4 h-4 mr-2" />
-              Offer Ride
-            </button>
+              <div className="flex flex-col items-center text-center">
+                <div className={`inline-flex p-3 bg-gradient-to-r ${action.gradient} rounded-xl text-white mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <action.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{action.title}</h3>
+                <p className="text-gray-600">{action.subtitle}</p>
+              </div>
+            </motion.button>
+          ))}
+        </motion.div>
+
+        {/* Stats Cards with Modern Design */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+        >
+          <StatsCard
+            label="Total Rides"
+            value={myRides?.length || 0}
+            icon={UserGroupIcon}
+            color="from-blue-500 to-cyan-500"
+          />
+          <StatsCard
+            label="Requests"
+            value={myRequests?.length || 0}
+            icon={MapPinIcon}
+            color="from-green-500 to-emerald-500"
+          />
+          <StatsCard
+            label="Bookings"
+            value={myBookings?.length || 0}
+            icon={CalendarIcon}
+            color="from-purple-500 to-pink-500"
+          />
+          <StatsCard
+            label="Karma Points"
+            value={user?.profile?.karma_points || 0}
+            icon={TrophyIcon}
+            color="from-yellow-500 to-orange-500"
+          />
+        </motion.div>
+
+        {/* Modern Tab Navigation */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white/70 backdrop-blur-lg rounded-2xl p-2 border border-white/50 shadow-lg mb-8"
+        >
+          <div className="flex space-x-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={(e) => handleTabClick(e, tab.id)}
+                className={`relative flex items-center px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                  activeTab === tab.id
+                    ? 'bg-white text-indigo-600 shadow-lg'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                }`}
+              >
+                <tab.icon className="w-5 h-5 mr-2" />
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-indigo-100 text-indigo-600 text-xs rounded-full">
+                    {tab.count}
+                  </span>
+                )}
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeTab"
+                    className="absolute inset-0 bg-white rounded-xl shadow-lg -z-10"
+                  />
+                )}
+              </button>
+            ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Stats */}
-        <DashboardStats 
-          myRides={myRides}
-          myRequests={myRequests}
-          myBookings={myBookings}
-          incomingRequests={incomingRequests}
-        />
-
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`${
-                    activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  } whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm flex items-center`}
-                >
-                  {tab.name}
-                  {tab.count !== null && tab.count > 0 && (
-                    <span className={`ml-2 ${
-                      activeTab === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
-                    } rounded-full px-2 py-1 text-xs font-medium`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="p-6">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="space-y-8">
-                {/* Quick Actions */}
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                      onClick={() => navigate('/search')}
-                      className="p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
-                    >
-                      <h3 className="font-medium text-gray-900 mb-2">Find a Ride</h3>
-                      <p className="text-gray-600 text-sm">Search for available rides that match your route</p>
-                    </button>
-                    <button
-                      onClick={() => navigate('/offer-ride')}
-                      className="p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-left"
-                    >
-                      <h3 className="font-medium text-gray-900 mb-2">Offer a Ride</h3>
-                      <p className="text-gray-600 text-sm">Share your trip and help other students</p>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Recent Activity - UPDATE THIS */}
-                <div>
-                  <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h2>
-                  <div className="space-y-4">
-                    {/* My Recent Rides */}
-                    {Array.isArray(myRides) && myRides.slice(0, 2).map((ride) => (
-                      <div key={ride.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {ride.origin} → {ride.destination}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(ride.departure_time).toLocaleDateString()} • {ride.available_seats} seats
-                          </p>
-                        </div>
-                        <span className="text-sm text-blue-600">Your ride</span>
-                      </div>
-                    ))}
-                    
-                    {/* My Recent Requests */}
-                    {Array.isArray(myRequests) && myRequests.slice(0, 2).map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {request.origin} → {request.destination}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Looking for ride • Max price: ${request.max_price || 'Any'}
-                          </p>
-                        </div>
-                        <span className="text-sm text-yellow-600">Your request</span>
-                      </div>
-                    ))}
-
-                    {/* My Recent Bookings */}
-                    {Array.isArray(myBookings) && myBookings.slice(0, 2).map((booking) => (
-                      <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {booking.ride?.origin} → {booking.ride?.destination}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Driver: {booking.ride?.driver?.full_name} • Status: {booking.status}
-                          </p>
-                        </div>
-                        <span className="text-sm text-green-600">Your booking</span>
-                      </div>
-                    ))}
-
-                    {/* No Activity Message */}
-                    {(!Array.isArray(myRides) || myRides.length === 0) && 
-                     (!Array.isArray(myRequests) || myRequests.length === 0) && 
-                     (!Array.isArray(myBookings) || myBookings.length === 0) && (
-                      <div className="text-center py-8">
-                        <p className="text-gray-600">No recent activity. Start by offering a ride or finding one!</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* My Rides Tab */}
-            {activeTab === 'my-rides' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium text-gray-900">My Rides</h2>
-                  <button
-                    onClick={() => navigate('/offer-ride')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center"
-                  >
-                    <PlusIcon className="w-4 h-4 mr-2" />
-                    Offer New Ride
-                  </button>
-                </div>
-                <MyRides rides={myRides} onDeleteRide={deleteRide} />
-              </div>
-            )}
-
-            {/* My Requests Tab */}
-            {activeTab === 'my-requests' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium text-gray-900">My Requests</h2>
-                  <button
-                    onClick={() => navigate('/search')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    Post New Request
-                  </button>
-                </div>
-                <MyRequests 
-                  requests={myRequests} 
-                  onCancelRequest={cancelRideRequest}
-                  onMarkAsFound={markRequestAsFound}
-                  onRefetch={refetch}
-                />
-              </div>
-            )}
-
-            {/* My Bookings Tab - ADD THIS */}
-            {activeTab === 'my-bookings' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-medium text-gray-900">My Bookings</h2>
-                  <button
-                    onClick={() => navigate('/search')}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    Find More Rides
-                  </button>
-                </div>
-                <MyBookings bookings={myBookings} onCancelBooking={cancelRequest} />
-              </div>
-            )}
-
-            {/* Incoming Requests Tab */}
-            {activeTab === 'incoming' && (
-              <div>
-                <h2 className="text-lg font-medium text-gray-900 mb-6">Incoming Requests</h2>
-                <IncomingRequests 
-                  requests={incomingRequests}
-                  onApprove={approveRequest}
-                  onReject={rejectRequest}
-                />
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Tab Content with Animations */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {renderTabContent(activeTab, { myRides, myRequests, myBookings, incomingRequests })}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )
 }
+
+// Modern Stats Card Component
+const StatsCard = ({ label, value, icon: Icon, color }) => (
+  <motion.div
+    whileHover={{ y: -4, scale: 1.02 }}
+    className="bg-white/70 backdrop-blur-lg rounded-2xl p-6 border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300"
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-gray-600 mb-1">{label}</p>
+        <p className="text-3xl font-bold text-gray-900">{value}</p>
+      </div>
+      <div className={`p-3 bg-gradient-to-r ${color} rounded-xl shadow-lg`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+    </div>
+  </motion.div>
+)
 
 export default Dashboard

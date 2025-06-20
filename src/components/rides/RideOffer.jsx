@@ -1,42 +1,33 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { 
-  MapPinIcon, 
-  ClockIcon, 
-  UserGroupIcon, 
-  CurrencyDollarIcon,
-  CalendarIcon,
-  CheckCircleIcon
-} from '@heroicons/react/24/outline'
-import { toast } from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import LocationInput from '../common/LocationInput'
+import toast from 'react-hot-toast'
 
 const RideOffer = () => {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
-  const [isSubmitting, setIsSubmitting] = useState(false)
   
-  // Form state - ONLY LocationInput, no duplicate inputs
+  console.log('🚀 RideOffer - Starting render process')
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState({})
+  
   const [formData, setFormData] = useState({
     origin: '',
-    destination: '',
     originCoordinates: null,
+    destination: '',
     destinationCoordinates: null,
-    departure_date: new Date().toISOString().split('T')[0],
-    departure_time: '',
-    available_seats: 1,
-    price: 0,
-    description: ''
+    departureDate: new Date().toISOString().split('T')[0],
+    departureTime: '',
+    availableSeats: 1,
+    notes: ''
   })
 
-  const [errors, setErrors] = useState({})
-
-  // Location handlers - these will be the ONLY inputs for locations
-  const handleOriginSelect = (location) => {
-    console.log('🎯 Origin selected:', location)
+  // 🔧 FIX: Use useCallback to prevent infinite re-renders
+  const handleOriginSelect = useCallback((location) => {
+    console.log('🔧 RideOffer - Origin selected:', location)
     setFormData(prev => ({
       ...prev,
       origin: location ? location.name : '',
@@ -46,10 +37,10 @@ const RideOffer = () => {
     if (location && errors.origin) {
       setErrors(prev => ({ ...prev, origin: null }))
     }
-  }
+  }, [errors.origin])
 
-  const handleDestinationSelect = (location) => {
-    console.log('🎯 Destination selected:', location)
+  const handleDestinationSelect = useCallback((location) => {
+    console.log('🔧 RideOffer - Destination selected:', location)
     setFormData(prev => ({
       ...prev,
       destination: location ? location.name : '',
@@ -59,17 +50,17 @@ const RideOffer = () => {
     if (location && errors.destination) {
       setErrors(prev => ({ ...prev, destination: null }))
     }
-  }
+  }, [errors.destination])
 
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
-  }
+  }, [])
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors = {}
     
     if (!formData.origin) {
@@ -78,18 +69,18 @@ const RideOffer = () => {
     if (!formData.destination) {
       newErrors.destination = 'Destination is required'
     }
-    if (!formData.departure_date) {
-      newErrors.departure_date = 'Departure date is required'
+    if (!formData.departureDate) {
+      newErrors.departureDate = 'Departure date is required'
     }
-    if (!formData.departure_time) {
-      newErrors.departure_time = 'Departure time is required'
+    if (!formData.departureTime) {
+      newErrors.departureTime = 'Departure time is required'
     }
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
+  }, [formData])
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault()
     
     if (!validateForm()) {
@@ -103,13 +94,16 @@ const RideOffer = () => {
         driver_id: user.id,
         origin: formData.origin,
         destination: formData.destination,
-        origin_coordinates: formData.originCoordinates,
-        destination_coordinates: formData.destinationCoordinates,
-        departure_time: `${formData.departure_date}T${formData.departure_time}:00`,
-        available_seats: parseInt(formData.available_seats),
-        total_seats: parseInt(formData.available_seats),
-        price_per_seat: parseFloat(formData.price) || 0,
-        notes: formData.description,
+        origin_coordinates: formData.originCoordinates 
+          ? `(${formData.originCoordinates[0]},${formData.originCoordinates[1]})`
+          : null,
+        destination_coordinates: formData.destinationCoordinates 
+          ? `(${formData.destinationCoordinates[0]},${formData.destinationCoordinates[1]})`
+          : null,
+        departure_time: `${formData.departureDate}T${formData.departureTime}:00`,
+        available_seats: parseInt(formData.availableSeats),
+        total_seats: parseInt(formData.availableSeats),
+        notes: formData.notes,
         status: 'active',
         created_at: new Date().toISOString()
       }
@@ -133,182 +127,152 @@ const RideOffer = () => {
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [user?.id, formData, validateForm, navigate])
+
+  // 🔧 FIX: Memoize form fields to prevent re-renders
+  const originLocationKey = `origin-${formData.origin}`
+  const destinationLocationKey = `destination-${formData.destination}`
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Offer a Ride</h1>
-          <p className="text-lg text-gray-600">
-            Share your journey and help fellow students get around campus
-          </p>
-        </motion.div>
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white rounded-2xl shadow-lg p-8"
-          >
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Ride Details</h2>
-            
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pt-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Offer a Ride</h1>
+            <p className="text-gray-600">Share your journey with fellow students</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Location Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* ✅ ONLY LocationInput for Origin - NO duplicate input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <MapPinIcon className="w-4 h-4 inline mr-1" />
-                  Pickup Location *
+                  From *
                 </label>
                 <LocationInput
-                  placeholder="Where will you start your trip?"
+                  key={originLocationKey}
+                  placeholder="Enter pickup location"
                   onLocationSelect={handleOriginSelect}
                   initialValue={formData.origin}
                   className="w-full"
+                  required
                 />
                 {errors.origin && (
                   <p className="mt-1 text-sm text-red-600">{errors.origin}</p>
                 )}
-                <p className="mt-1 text-xs text-blue-600">
-                  Selected: {formData.origin || 'None'}
-                </p>
               </div>
 
-              {/* ✅ ONLY LocationInput for Destination - NO duplicate input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <MapPinIcon className="w-4 h-4 inline mr-1" />
-                  Destination *
+                  To *
                 </label>
                 <LocationInput
-                  placeholder="Where are you going?"
+                  key={destinationLocationKey}
+                  placeholder="Enter destination"
                   onLocationSelect={handleDestinationSelect}
                   initialValue={formData.destination}
                   className="w-full"
+                  required
                 />
                 {errors.destination && (
                   <p className="mt-1 text-sm text-red-600">{errors.destination}</p>
                 )}
-                <p className="mt-1 text-xs text-blue-600">
-                  Selected: {formData.destination || 'None'}
-                </p>
               </div>
+            </div>
 
-              {/* Date */}
+            {/* Date and Time */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CalendarIcon className="w-4 h-4 inline mr-1" />
                   Departure Date *
                 </label>
                 <input
                   type="date"
-                  name="departure_date"
-                  value={formData.departure_date}
+                  name="departureDate"
+                  value={formData.departureDate}
                   onChange={handleInputChange}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
-                {errors.departure_date && (
-                  <p className="mt-1 text-sm text-red-600">{errors.departure_date}</p>
+                {errors.departureDate && (
+                  <p className="mt-1 text-sm text-red-600">{errors.departureDate}</p>
                 )}
               </div>
 
-              {/* Time */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <ClockIcon className="w-4 h-4 inline mr-1" />
                   Departure Time *
                 </label>
                 <input
                   type="time"
-                  name="departure_time"
-                  value={formData.departure_time}
+                  name="departureTime"
+                  value={formData.departureTime}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
                 />
-                {errors.departure_time && (
-                  <p className="mt-1 text-sm text-red-600">{errors.departure_time}</p>
+                {errors.departureTime && (
+                  <p className="mt-1 text-sm text-red-600">{errors.departureTime}</p>
                 )}
-              </div>
-
-              {/* Available Seats */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <UserGroupIcon className="w-4 h-4 inline mr-1" />
-                  Available Seats *
-                </label>
-                <select
-                  name="available_seats"
-                  value={formData.available_seats}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {[1, 2, 3, 4, 5, 6].map(num => (
-                    <option key={num} value={num}>{num} seat{num > 1 ? 's' : ''}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Price */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <CurrencyDollarIcon className="w-4 h-4 inline mr-1" />
-                  Price per Person
-                </label>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00 (Free)"
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                <p className="mt-1 text-xs text-gray-500">Leave blank or 0 for free rides</p>
               </div>
             </div>
 
-            {/* Description */}
-            <div className="mt-6">
+            {/* Available Seats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Seats *
+                </label>
+                <select
+                  name="availableSeats"
+                  value={formData.availableSeats}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  {[1, 2, 3, 4, 5, 6, 7].map(num => (
+                    <option key={num} value={num}>{num} seat{num !== 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div></div>
+            </div>
+
+            {/* Notes */}
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Additional Notes
               </label>
               <textarea
-                name="description"
-                value={formData.description}
+                name="notes"
+                value={formData.notes}
                 onChange={handleInputChange}
                 rows={3}
-                placeholder="Any additional information about your ride..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Any additional information for passengers..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
 
-            <div className="flex justify-end mt-8">
+            {/* Submit Button */}
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center"
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    Create Ride Offer
-                    <CheckCircleIcon className="w-5 h-5 ml-2" />
-                  </>
-                )}
+                {isSubmitting ? 'Creating...' : 'Create Ride Offer'}
               </button>
             </div>
-          </motion.div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   )

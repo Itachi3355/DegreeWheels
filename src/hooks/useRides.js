@@ -17,10 +17,11 @@ export const useRides = () => {
     }
 
     console.log('Fetching rides from Supabase...')
+    console.log('🔍 User ID:', user.id)
     setError(null)
 
     try {
-      // Fetch rides
+      // Fetch rides with detailed logging
       const { data: ridesData, error: ridesError } = await supabase
         .from('rides')
         .select(`
@@ -35,12 +36,19 @@ export const useRides = () => {
         .eq('status', 'active')
         .order('departure_time', { ascending: true })
 
+      console.log('🔍 Rides query result:', { 
+        data: ridesData, 
+        error: ridesError,
+        count: ridesData?.length 
+      })
+
       if (ridesError) {
         console.error('❌ Error fetching rides:', ridesError)
         throw ridesError
       }
 
       console.log('Rides fetched successfully:', ridesData?.length || 0)
+      console.log('🔍 First ride (if any):', ridesData?.[0])
       setRides(ridesData || [])
 
     } catch (error) {
@@ -60,19 +68,19 @@ export const useRides = () => {
     console.log('🔍 Current user email:', user.email)
 
     try {
-      // 🔧 FIX: Use 'departure_time' instead of 'preferred_departure_time'
+      // ✅ FIX: Use the correct table name 'passenger_ride_requests'
       const { data: requestsData, error: requestsError } = await supabase
-        .from('ride_requests')
+        .from('passenger_ride_requests')  // ✅ CHANGE THIS LINE
         .select(`
           *,
-          requester:profiles!ride_requests_requester_id_fkey(
+          passenger:profiles!passenger_ride_requests_passenger_id_fkey(
             id,
             full_name,
             email,
             phone
           )
         `)
-        .order('departure_time', { ascending: true })
+        .order('preferred_departure_time', { ascending: true })  // ✅ Use correct column name
 
       if (requestsError) {
         console.error('❌ Error fetching requests:', requestsError)
@@ -95,8 +103,8 @@ export const useRides = () => {
 
       // Filter out own requests (so users don't see their own requests to offer rides to)
       const filteredRequests = requestsData.filter(request => {
-        const isOwnRequest = request.requester_id === user.id
-        console.log(`🔍 Comparing: ${request.requester_id} !== ${user.id}`)
+        const isOwnRequest = request.passenger_id === user.id  // ✅ Use correct column name
+        console.log(`🔍 Comparing: ${request.passenger_id} !== ${user.id}`)
         return !isOwnRequest
       })
 

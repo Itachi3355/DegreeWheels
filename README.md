@@ -1,88 +1,43 @@
-# RideShare - University Rideshare Platform
+# 🎓 DegreeWheels - University Rideshare Platform
 
-A modern rideshare platform designed specifically for university students to share rides safely and efficiently.
+**Meet • Move • Share • Study (MMSS)**
 
-## 🚀 Features
+DegreeWheels is the premier rideshare platform designed specifically for university students. Connect with classmates, share rides efficiently, and build your campus community.
 
-- **Student-Only Platform**: University email verification required
-- **Real-time Ride Matching**: Find rides instantly
-- **Interactive Maps**: Powered by Mapbox GL JS
-- **Secure Authentication**: Supabase Auth integration
-- **Mobile Responsive**: Works perfectly on all devices
-- **Real-time Notifications**: Stay updated on ride requests
+## 🌟 The MMSS Philosophy
 
-## 🛠️ Tech Stack
+- **🤝 MEET** - Connect with fellow students and build lasting friendships
+- **🚗 MOVE** - Get around campus and beyond efficiently and affordably  
+- **🤗 SHARE** - Share rides, costs, and experiences with your peers
+- **📚 STUDY** - Turn travel time into study time with like-minded students
+
+## ✨ Features
+
+- 🎓 University-verified student accounts
+- 🗺️ Interactive campus maps with Mapbox
+- 📱 Real-time notifications and messaging
+- 💬 In-app chat for ride coordination
+- 🔒 Secure authentication with student verification
+- 📊 Personal dashboard with ride management
+- 🚀 Mobile-optimized responsive design
+
+## 🛠️ Built With
 
 - **Frontend**: React 18, Tailwind CSS, Framer Motion
-- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
+- **Backend**: Supabase (PostgreSQL + Real-time subscriptions)
 - **Maps**: Mapbox GL JS
-- **Icons**: Heroicons
-- **State Management**: React Context API
-- **Routing**: React Router DOM
+- **Authentication**: Supabase Auth with university verification
 
-## 📦 Installation
+## 🎯 Perfect For
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/rideshare-app.git
-   cd rideshare-app
-   ```
+- Daily campus commutes
+- Weekend trips home
+- Study group meetups
+- Campus events and activities
+- Building your university network
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+---
 
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Fill in your environment variables:
-   ```env
-   REACT_APP_SUPABASE_URL=your-supabase-url
-   REACT_APP_SUPABASE_ANON_KEY=your-supabase-anon-key
-   REACT_APP_MAPBOX_ACCESS_TOKEN=your-mapbox-token
-   ```
+*DegreeWheels - Where education meets transportation* 🎓🚗
 
-4. **Start the development server**
-   ```bash
-   npm start
-   ```
-
-## 🗄️ Database Setup
-
-The app uses Supabase with the following main tables:
-- `profiles` - User profiles
-- `rides` - Ride offers
-- `ride_requests` - Passenger requests
-- `ride_bookings` - Confirmed bookings
-- `notifications` - Real-time notifications
-
-## 🚀 Deployment
-
-1. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to your preferred platform**
-   - Vercel
-   - Netlify
-   - AWS S3 + CloudFront
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📝 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support, email support@rideshare.com or create an issue in this repository.
+**Developed by MMSS** - Connecting students, one ride at a time.

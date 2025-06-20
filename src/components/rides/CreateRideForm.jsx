@@ -1,14 +1,18 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { 
   MapPinIcon, 
   CalendarIcon, 
   ClockIcon, 
   UserIcon,
   DocumentTextIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline'
 import { useCreateRide } from '../../hooks/useCreateRide'
+import LocationInput from '../common/LocationInput'
+import toast from 'react-hot-toast'
 
 const CreateRideForm = ({ onSuccess }) => {
   const navigate = useNavigate()
@@ -17,371 +21,351 @@ const CreateRideForm = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
     origin: '',
     destination: '',
-    departure_date: '',
+    originCoordinates: null,
+    destinationCoordinates: null,
+    departure_date: new Date().toISOString().split('T')[0],
     departure_time: '',
     available_seats: 1,
     description: ''
   })
 
   const [errors, setErrors] = useState({})
-  const [step, setStep] = useState(1)
 
-  // Get today's date in YYYY-MM-DD format for min date
+  // Get today's date for min date
   const today = new Date().toISOString().split('T')[0]
   
-  // Get current time in HH:MM format
+  // Get current time
   const now = new Date()
-  const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+  const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                     now.getMinutes().toString().padStart(2, '0')
+
+  // Location selection handlers
+  const handleOriginSelect = useCallback((location) => {
+    setFormData(prev => ({
+      ...prev,
+      origin: location ? location.name : '',
+      originCoordinates: location ? location.coordinates : null
+    }))
+    if (errors.origin) {
+      setErrors(prev => ({ ...prev, origin: '' }))
+    }
+  }, [errors.origin])
+
+  const handleDestinationSelect = useCallback((location) => {
+    setFormData(prev => ({
+      ...prev,
+      destination: location ? location.name : '',
+      destinationCoordinates: location ? location.coordinates : null
+    }))
+    if (errors.destination) {
+      setErrors(prev => ({ ...prev, destination: '' }))
+    }
+  }, [errors.destination])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
     
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
+      setErrors(prev => ({ ...prev, [name]: '' }))
     }
   }
 
-  const validateStep = (currentStep) => {
+  const validateForm = () => {
     const newErrors = {}
 
-    if (currentStep === 1) {
-      if (!formData.origin.trim()) {
-        newErrors.origin = 'Pickup location is required'
-      }
-      if (!formData.destination.trim()) {
-        newErrors.destination = 'Destination is required'
-      }
-      if (formData.origin.trim() && formData.destination.trim() && 
-          formData.origin.trim().toLowerCase() === formData.destination.trim().toLowerCase()) {
-        newErrors.destination = 'Destination must be different from pickup location'
+    if (!formData.origin.trim()) {
+      newErrors.origin = 'Pickup location is required'
+    }
+    if (!formData.destination.trim()) {
+      newErrors.destination = 'Destination is required'
+    }
+    if (!formData.departure_date) {
+      newErrors.departure_date = 'Departure date is required'
+    }
+    if (!formData.departure_time) {
+      newErrors.departure_time = 'Departure time is required'
+    }
+    
+    // Validate future date/time
+    if (formData.departure_date && formData.departure_time) {
+      const selectedDateTime = new Date(`${formData.departure_date}T${formData.departure_time}`)
+      const now = new Date()
+      
+      if (selectedDateTime <= now) {
+        newErrors.departure_time = 'Departure time must be in the future'
       }
     }
 
-    if (currentStep === 2) {
-      if (!formData.departure_date) {
-        newErrors.departure_date = 'Departure date is required'
-      }
-      if (!formData.departure_time) {
-        newErrors.departure_time = 'Departure time is required'
-      }
-      
-      // Validate date/time is in the future
-      if (formData.departure_date && formData.departure_time) {
-        const departureDateTime = new Date(`${formData.departure_date}T${formData.departure_time}`)
-        const now = new Date()
-        
-        if (departureDateTime <= now) {
-          newErrors.departure_time = 'Departure time must be in the future'
-        }
-      }
-      
-      if (!formData.available_seats || formData.available_seats < 1 || formData.available_seats > 8) {
-        newErrors.available_seats = 'Available seats must be between 1 and 8'
-      }
+    if (!formData.available_seats || formData.available_seats < 1) {
+      newErrors.available_seats = 'At least 1 seat is required'
     }
-
-    // Step 3 validation (optional description, no validation needed)
-    // No validation needed for step 3 since description is optional
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleNext = () => {
-    if (validateStep(step)) {
-      setStep(step + 1)
-    }
-  }
-
-  const handleBack = () => {
-    setStep(step - 1)
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // Only submit when explicitly called (not from validation)
-    console.log('Form submitted explicitly')
-    
-    // Combine date and time
-    const departure_time = `${formData.departure_date}T${formData.departure_time}`
-    
-    const rideData = {
-      ...formData,
-      departure_time,
-      available_seats: parseInt(formData.available_seats)
+    if (!validateForm()) {
+      toast.error('Please fill in all required fields')
+      return
     }
 
-    const result = await createRide(rideData)
-    
-    if (result.success) {
-      if (onSuccess) {
-        onSuccess(result.data)
-      } else {
-        navigate('/dashboard')
+    try {
+      const rideData = {
+        origin: formData.origin,
+        destination: formData.destination,
+        departure_time: `${formData.departure_date}T${formData.departure_time}:00`,
+        available_seats: parseInt(formData.available_seats),
+        description: formData.description
       }
+
+      const result = await createRide(rideData)
+      
+      if (result.success) {
+        toast.success('Ride created successfully!')
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          navigate('/dashboard')
+        }
+      }
+    } catch (error) {
+      console.error('Error creating ride:', error)
+      toast.error('Failed to create ride. Please try again.')
     }
   }
 
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Where are you going?</h2>
-        <p className="text-gray-600">Tell us your pickup location and destination</p>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <MapPinIcon className="w-4 h-4 inline mr-2" />
-            Pickup Location
-          </label>
-          <input
-            type="text"
-            name="origin"
-            value={formData.origin}
-            onChange={handleInputChange}
-            placeholder="e.g., UNT Campus, Denton"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.origin ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.origin && (
-            <p className="mt-1 text-sm text-red-600">{errors.origin}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <MapPinIcon className="w-4 h-4 inline mr-2" />
-            Destination
-          </label>
-          <input
-            type="text"
-            name="destination"
-            value={formData.destination}
-            onChange={handleInputChange}
-            placeholder="e.g., Dallas Airport, Dallas"
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.destination ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.destination && (
-            <p className="mt-1 text-sm text-red-600">{errors.destination}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderStep2 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">When are you leaving?</h2>
-        <p className="text-gray-600">Set your departure date, time, and available seats</p>
-      </div>
-
-      <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <CalendarIcon className="w-4 h-4 inline mr-2" />
-            Departure Date
-          </label>
-          <input
-            type="date"
-            name="departure_date"
-            value={formData.departure_date}
-            onChange={handleInputChange}
-            min={today}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.departure_date ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.departure_date && (
-            <p className="mt-1 text-sm text-red-600">{errors.departure_date}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <ClockIcon className="w-4 h-4 inline mr-2" />
-            Departure Time
-          </label>
-          <input
-            type="time"
-            name="departure_time"
-            value={formData.departure_time}
-            onChange={handleInputChange}
-            min={formData.departure_date === today ? currentTime : undefined}
-            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-              errors.departure_time ? 'border-red-500' : 'border-gray-300'
-            }`}
-          />
-          {errors.departure_time && (
-            <p className="mt-1 text-sm text-red-600">{errors.departure_time}</p>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          <UserIcon className="w-4 h-4 inline mr-2" />
-          Available Seats
-        </label>
-        <select
-          name="available_seats"
-          value={formData.available_seats}
-          onChange={handleInputChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-            errors.available_seats ? 'border-red-500' : 'border-gray-300'
-          }`}
-        >
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-            <option key={num} value={num}>
-              {num} seat{num > 1 ? 's' : ''}
-            </option>
-          ))}
-        </select>
-        {errors.available_seats && (
-          <p className="mt-1 text-sm text-red-600">{errors.available_seats}</p>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Additional Details</h2>
-        <p className="text-gray-600">Add any additional information about your ride</p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          <DocumentTextIcon className="w-4 h-4 inline mr-2" />
-          Additional Information (Optional)
-        </label>
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleInputChange}
-          placeholder="Any additional details about your ride (pickup instructions, car description, preferences, etc.)"
-          rows={4}
-          maxLength={500}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-        />
-        <div className="mt-1 text-sm text-gray-500 text-right">
-          {formData.description.length}/500
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="font-medium text-gray-900 mb-4">Ride Summary</h3>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Route:</span>
-            <span className="font-medium">{formData.origin} → {formData.destination}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Date & Time:</span>
-            <span className="font-medium">
-              {formData.departure_date && new Date(formData.departure_date).toLocaleDateString()} 
-              {formData.departure_time && ` at ${formData.departure_time}`}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Available Seats:</span>
-            <span className="font-medium">{formData.available_seats}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Type:</span>
-            <span className="font-medium">Free Ride</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg">
-      {/* Progress Bar */}
-      <div className="px-8 pt-8">
-        <div className="flex items-center justify-between mb-8">
-          {[1, 2, 3].map((num) => (
-            <div key={num} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step >= num ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {step > num ? (
-                  <CheckCircleIcon className="w-5 h-5" />
-                ) : (
-                  num
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 pt-20">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100"
+        >
+          {/* Compact Header */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-8 text-white">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mr-4 backdrop-blur-sm">
+                <SparklesIcon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Create Your Ride</h1>
+                <p className="text-lg opacity-90 mt-1">Share your journey with fellow students</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Single Page Form */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Route Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Origin */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <div className="flex items-center">
+                    <MapPinIcon className="w-5 h-5 text-green-600 mr-2" />
+                    Pickup Location *
+                  </div>
+                </label>
+                <LocationInput
+                  placeholder="Enter pickup location..."
+                  onLocationSelect={handleOriginSelect}
+                  initialValue={formData.origin}
+                  className={`${errors.origin ? 'border-red-300' : 'border-gray-300'} rounded-lg`}
+                />
+                {errors.origin && (
+                  <p className="mt-1 text-sm text-red-600">{errors.origin}</p>
                 )}
               </div>
-              {num < 3 && (
-                <div className={`w-12 h-1 mx-2 ${
-                  step > num ? 'bg-blue-600' : 'bg-gray-200'
-                }`} />
-              )}
+
+              {/* Destination */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <div className="flex items-center">
+                    <MapPinIcon className="w-5 h-5 text-red-600 mr-2" />
+                    Destination *
+                  </div>
+                </label>
+                <LocationInput
+                  placeholder="Enter destination..."
+                  onLocationSelect={handleDestinationSelect}
+                  initialValue={formData.destination}
+                  className={`${errors.destination ? 'border-red-300' : 'border-gray-300'} rounded-lg`}
+                />
+                {errors.destination && (
+                  <p className="mt-1 text-sm text-red-600">{errors.destination}</p>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Form Content - Remove onSubmit from form tag */}
-      <div className="px-8 pb-8">
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-        {step === 3 && renderStep3()}
+            {/* Date & Time Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <div className="flex items-center">
+                    <CalendarIcon className="w-5 h-5 text-blue-600 mr-2" />
+                    Departure Date *
+                  </div>
+                </label>
+                <input
+                  type="date"
+                  name="departure_date"
+                  value={formData.departure_date}
+                  onChange={handleInputChange}
+                  min={today}
+                  className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.departure_date ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.departure_date && (
+                  <p className="mt-1 text-sm text-red-600">{errors.departure_date}</p>
+                )}
+              </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex justify-between mt-8">
-          <button
-            type="button"
-            onClick={step === 1 ? () => navigate('/dashboard') : handleBack}
-            className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {step === 1 ? 'Cancel' : 'Back'}
-          </button>
+              {/* Time */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <div className="flex items-center">
+                    <ClockIcon className="w-5 h-5 text-purple-600 mr-2" />
+                    Departure Time *
+                  </div>
+                </label>
+                <input
+                  type="time"
+                  name="departure_time"
+                  value={formData.departure_time}
+                  onChange={handleInputChange}
+                  min={formData.departure_date === today ? currentTime : undefined}
+                  className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.departure_time ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {errors.departure_time && (
+                  <p className="mt-1 text-sm text-red-600">{errors.departure_time}</p>
+                )}
+              </div>
 
-          {step < 3 ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Ride...
-                </>
-              ) : (
-                <>
-                  <CheckCircleIcon className="w-4 h-4 mr-2" />
-                  Create Ride
-                </>
-              )}
-            </button>
-          )}
-        </div>
+              {/* Available Seats */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <div className="flex items-center">
+                    <UserIcon className="w-5 h-5 text-orange-600 mr-2" />
+                    Available Seats *
+                  </div>
+                </label>
+                <select
+                  name="available_seats"
+                  value={formData.available_seats}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.available_seats ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                    <option key={num} value={num}>{num} seat{num !== 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+                {errors.available_seats && (
+                  <p className="mt-1 text-sm text-red-600">{errors.available_seats}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                <div className="flex items-center">
+                  <DocumentTextIcon className="w-5 h-5 text-indigo-600 mr-2" />
+                  Additional Information (Optional)
+                </div>
+              </label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={3}
+                placeholder="Meeting point details, car info, special requirements..."
+                className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+            </div>
+
+            {/* Quick Preview */}
+            {(formData.origin || formData.destination) && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100"
+              >
+                <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                  <SparklesIcon className="w-5 h-5 text-blue-600 mr-2" />
+                  Ride Preview
+                </h3>
+                <div className="text-sm space-y-2">
+                  {formData.origin && formData.destination && (
+                    <div className="flex items-center">
+                      <span className="font-medium text-gray-600">Route:</span>
+                      <span className="ml-2 text-gray-900">{formData.origin} → {formData.destination}</span>
+                    </div>
+                  )}
+                  {formData.departure_date && formData.departure_time && (
+                    <div className="flex items-center">
+                      <span className="font-medium text-gray-600">When:</span>
+                      <span className="ml-2 text-gray-900">
+                        {new Date(formData.departure_date).toLocaleDateString()} at {formData.departure_time}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center">
+                    <span className="font-medium text-gray-600">Seats:</span>
+                    <span className="ml-2 text-gray-900">{formData.available_seats} available</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="font-medium text-gray-600">Type:</span>
+                    <span className="ml-2 text-green-600 font-semibold">Free Ride</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-100">
+              <motion.button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all duration-200"
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                type="submit"
+                disabled={loading}
+                whileHover={{ scale: loading ? 1 : 1.02 }}
+                whileTap={{ scale: loading ? 1 : 0.98 }}
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircleIcon className="w-5 h-5 mr-2" />
+                    Create Ride
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </form>
+        </motion.div>
       </div>
     </div>
   )

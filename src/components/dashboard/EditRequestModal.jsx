@@ -2,10 +2,13 @@
 import React, { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext' // ✅ ADD this import
 import LocationInput from '../common/LocationInput'
 import toast from 'react-hot-toast'
 
 const EditRequestModal = ({ request, isOpen, onClose, onSuccess }) => {
+  const { user } = useAuth() // ✅ ADD this line to get user
+  
   const [formData, setFormData] = useState({
     origin: '',
     destination: '',
@@ -21,7 +24,7 @@ const EditRequestModal = ({ request, isOpen, onClose, onSuccess }) => {
   // Populate form when request changes
   useEffect(() => {
     if (request) {
-      console.log('🔧 Editing request:', request) // Debug log to see actual structure
+      console.log('🔧 Editing request:', request)
       
       const departureTime = request.preferred_departure_time 
         ? new Date(request.preferred_departure_time) 
@@ -67,23 +70,19 @@ const EditRequestModal = ({ request, isOpen, onClose, onSuccess }) => {
     try {
       setLoading(true)
 
-      // Create update data with only the columns that exist
       const updateData = {
         origin: formData.origin,
         destination: formData.destination,
-        preferred_departure_time: (formData.departure_date && formData.departure_time) 
-          ? `${formData.departure_date}T${formData.departure_time}:00`
-          : null,
         notes: formData.notes || '',
         updated_at: new Date().toISOString()
       }
 
-      // Only add max_price if it has a value
-      if (formData.max_price) {
-        updateData.max_price = parseFloat(formData.max_price)
+      // Add departure time if both date and time are provided
+      if (formData.departure_date && formData.departure_time) {
+        updateData.preferred_departure_time = `${formData.departure_date}T${formData.departure_time}:00+00`
       }
 
-      // Only add coordinates if they exist
+      // Add coordinates if available
       if (formData.originCoordinates) {
         updateData.origin_coordinates = `(${formData.originCoordinates[0]},${formData.originCoordinates[1]})`
       }
@@ -91,21 +90,36 @@ const EditRequestModal = ({ request, isOpen, onClose, onSuccess }) => {
         updateData.destination_coordinates = `(${formData.destinationCoordinates[0]},${formData.destinationCoordinates[1]})`
       }
 
-      console.log('🔧 Update data:', updateData) // Debug log
+      console.log('🔧 Updating request ID:', request.id)
+      console.log('🔧 Update data:', updateData)
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('passenger_ride_requests')
         .update(updateData)
         .eq('id', request.id)
+        .eq('passenger_id', user.id) // ✅ Use passenger_id since that's what your table uses
+        .select()
 
-      if (error) throw error
+      // If that fails, try with requester_id:
+      // .eq('requester_id', user.id)
+
+      if (error) {
+        console.error('❌ Supabase error:', error)
+        throw error
+      }
+
+      console.log('✅ Update successful:', data)
 
       toast.success('Request updated successfully!')
-      onSuccess()
+      
+      if (onSuccess) {
+        await onSuccess()
+      }
+      
       onClose()
 
     } catch (error) {
-      console.error('Error updating request:', error)
+      console.error('❌ Error updating request:', error)
       toast.error(`Failed to update request: ${error.message}`)
     } finally {
       setLoading(false)
@@ -183,12 +197,10 @@ const EditRequestModal = ({ request, isOpen, onClose, onSuccess }) => {
           {/* Max Price */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Max Price (per person)
+              Maximum Price (Optional)
             </label>
             <input
               type="number"
-              min="0"
-              step="0.01"
               value={formData.max_price}
               onChange={(e) => setFormData(prev => ({ ...prev, max_price: e.target.value }))}
               placeholder="Leave empty for negotiable"

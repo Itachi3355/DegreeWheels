@@ -2,33 +2,59 @@ import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   MapPinIcon, 
-  CalendarIcon, 
   ClockIcon, 
   UserIcon,
+  CalendarIcon,
   EyeIcon,
+  PencilIcon,
   TrashIcon,
-  ExclamationTriangleIcon,
-  TruckIcon
+  XCircleIcon,
+  TruckIcon,
+  UserGroupIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { supabase } from '../../lib/supabase'
-import LocationInput from '../common/LocationInput' // ✅ Add this import
+import { useAuth } from '../../contexts/AuthContext' // ✅ ADD: Missing import
+import LocationInput from '../common/LocationInput'
 import toast from 'react-hot-toast'
 
-const MyRides = ({ rides, onDeleteRide }) => {
+const MyRides = ({ rides, onDeleteRide, onRefetch }) => {
   const navigate = useNavigate()
+  const { user } = useAuth() // ✅ ADD: Get user from auth context
 
-  // ✅ Separate upcoming and past rides
+  // Add search filters
+  const [searchFilters, setSearchFilters] = useState({
+    origin: '',
+    destination: '',
+    status: 'all'
+  })
+
+  // Separate upcoming and past rides
   const { upcomingRides, pastRides } = useMemo(() => {
     const now = new Date()
-    const upcoming = rides.filter(ride => new Date(ride.departure_time) > now)
-    const past = rides.filter(ride => new Date(ride.departure_time) <= now)
+    const filteredRides = rides.filter(ride => {
+      const matchesOrigin = !searchFilters.origin || 
+        ride.origin?.toLowerCase().includes(searchFilters.origin.toLowerCase())
+      
+      const matchesDestination = !searchFilters.destination || 
+        ride.destination?.toLowerCase().includes(searchFilters.destination.toLowerCase())
+      
+      const matchesStatus = searchFilters.status === 'all' || 
+        ride.status === searchFilters.status
+      
+      return matchesOrigin && matchesDestination && matchesStatus
+    })
+    
+    const upcoming = filteredRides.filter(ride => new Date(ride.departure_time) > now)
+    const past = filteredRides.filter(ride => new Date(ride.departure_time) <= now)
     
     return {
       upcomingRides: upcoming,
       pastRides: past
     }
-  }, [rides])
+  }, [rides, searchFilters])
 
+  // ✅ ADD: Missing utility functions
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -53,33 +79,165 @@ const MyRides = ({ rides, onDeleteRide }) => {
     }
   }
 
-  const handleDeleteRide = (rideId, event) => {
-    event.stopPropagation()
-    if (window.confirm('Are you sure you want to cancel this ride? This action cannot be undone.')) {
-      onDeleteRide(rideId)
+  // ✅ ADD: Missing handler functions
+  const handleViewRideDetails = (rideId, e) => {
+    e.stopPropagation()
+    navigate(`/ride/${rideId}`)
+  }
+
+  const handleEditRide = (rideId, e) => {
+    e.stopPropagation()
+    // Navigate to edit ride page or open edit modal
+    navigate(`/edit-ride/${rideId}`)
+  }
+
+  const handleDeleteRide = (rideId, e) => {
+    e.stopPropagation()
+    if (window.confirm('Are you sure you want to delete this ride? This action cannot be undone.')) {
+      if (onDeleteRide) {
+        onDeleteRide(rideId)
+      }
     }
   }
 
-  // ✅ Add search filters
-  const [searchFilters, setSearchFilters] = useState({
-    origin: '',
-    destination: '',
-    status: 'all'
-  })
+  // ✅ ADD: Complete handleCancelRide function
+  const handleCancelRide = async (rideId, e) => {
+    e.stopPropagation()
+    
+    if (!window.confirm('Are you sure you want to cancel this ride? This will notify all passengers and restore their requests.')) {
+      return
+    }
 
-  // ✅ Add filter function
-  const filteredRides = rides.filter(ride => {
-    const matchesOrigin = !searchFilters.origin || 
-      ride.origin?.toLowerCase().includes(searchFilters.origin.toLowerCase())
-    
-    const matchesDestination = !searchFilters.destination || 
-      ride.destination?.toLowerCase().includes(searchFilters.destination.toLowerCase())
-    
-    const matchesStatus = searchFilters.status === 'all' || 
-      ride.status === searchFilters.status
-    
-    return matchesOrigin && matchesDestination && matchesStatus
-  })
+    try {
+      console.log('Cancelling ride:', rideId, 'User:', user?.id)
+      
+      // 1. Get all accepted bookings for this ride
+      const { data: acceptedBookings } = await supabase
+        .from('ride_bookings')
+        .select('passenger_id')
+        .eq('ride_id', rideId)
+        .eq('status', 'accepted')
+
+      // 2. Cancel the ride
+      const { error: rideError } = await supabase
+        .from('rides')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', rideId)
+        .eq('driver_id', user.id)
+
+      if (rideError) throw rideError
+
+      // 3. Cancel all bookings for this ride
+      const { error: bookingError } = await supabase
+        .from('ride_bookings')
+        .update({ 
+          status: 'cancelled',
+          updated_at: new Date().toISOString() 
+        })
+        .eq('ride_id', rideId)
+
+      if (bookingError) throw bookingError
+
+      // 4. Restore passenger requests to 'open' status
+      if (acceptedBookings && acceptedBookings.length > 0) {
+        const passengerIds = acceptedBookings.map(b => b.passenger_id)
+        
+        const { error: requestError } = await supabase
+          .from('passenger_ride_requests')
+          .update({ 
+            status: 'open',
+            updated_at: new Date().toISOString() 
+          })
+          .in('passenger_id', passengerIds)
+          .eq('status', 'matched')
+
+        if (requestError) {
+          console.warn('Failed to restore passenger requests:', requestError)
+        }
+      }
+
+      toast.success('Ride cancelled successfully. Passengers have been notified.')
+      
+      // Refresh the rides list
+      if (onRefetch) {
+        onRefetch()
+      }
+
+    } catch (error) {
+      console.error('Error cancelling ride:', error)
+      toast.error('Failed to cancel ride')
+    }
+  }
+
+  // Add this function after the existing functions:
+  const handleCleanupDuplicates = async () => {
+    if (!window.confirm('This will remove duplicate rides. Are you sure?')) {
+      return
+    }
+
+    try {
+      // Get all rides for this user
+      const { data: allRides, error } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('driver_id', user.id)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+
+      // Group by origin, destination, and departure_time
+      const rideGroups = new Map()
+      
+      allRides.forEach(ride => {
+        const key = `${ride.origin}-${ride.destination}-${ride.departure_time}`
+        if (!rideGroups.has(key)) {
+          rideGroups.set(key, [])
+        }
+        rideGroups.get(key).push(ride)
+      })
+
+      // Find duplicates (groups with more than 1 ride)
+      const duplicatesToDelete = []
+      
+      rideGroups.forEach((rides, key) => {
+        if (rides.length > 1) {
+          // Keep the first one (oldest), mark others for deletion
+          const [keepRide, ...deleteDuplicates] = rides
+          duplicatesToDelete.push(...deleteDuplicates.map(r => r.id))
+          console.log(`🔄 Found ${rides.length} duplicates for: ${key}`)
+          console.log(`🔄 Keeping ride ID: ${keepRide.id}`)
+          console.log(`🔄 Deleting ride IDs: ${deleteDuplicates.map(r => r.id).join(', ')}`)
+        }
+      })
+
+      if (duplicatesToDelete.length === 0) {
+        toast.success('No duplicates found!')
+        return
+      }
+
+      // Delete duplicate rides
+      const { error: deleteError } = await supabase
+        .from('rides')
+        .delete()
+        .in('id', duplicatesToDelete)
+
+      if (deleteError) throw deleteError
+
+      toast.success(`Removed ${duplicatesToDelete.length} duplicate rides!`)
+      
+      // Refresh the rides list
+      if (onRefetch) {
+        onRefetch()
+      }
+
+    } catch (error) {
+      console.error('❌ Error cleaning duplicates:', error)
+      toast.error('Failed to clean duplicates')
+    }
+  }
 
   if (rides.length === 0) {
     return (
@@ -99,10 +257,10 @@ const MyRides = ({ rides, onDeleteRide }) => {
 
   return (
     <div className="space-y-6">
-      {/* ✅ Add Search Filters */}
+      {/* Search Filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Filter My Rides</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
             <LocationInput
@@ -147,19 +305,28 @@ const MyRides = ({ rides, onDeleteRide }) => {
             </select>
           </div>
           
-          <div className="flex items-end">
+          <div className="flex items-end space-x-2">
             <button
               onClick={() => setSearchFilters({ origin: '', destination: '', status: 'all' })}
-              className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200"
+              className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200"
             >
               Clear Filters
+            </button>
+            
+            {/* ✅ ADD: Cleanup button */}
+            <button
+              onClick={handleCleanupDuplicates}
+              className="flex-1 bg-orange-100 text-orange-700 px-4 py-2 rounded-md hover:bg-orange-200 text-sm"
+              title="Remove duplicate rides"
+            >
+              🧹 Cleanup
             </button>
           </div>
         </div>
       </div>
 
-      {/* Rides List - Use filteredRides instead of rides */}
-      {filteredRides.length === 0 ? (
+      {/* Rides List */}
+      {upcomingRides.length === 0 && pastRides.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             {searchFilters.origin || searchFilters.destination || searchFilters.status !== 'all' 
@@ -176,7 +343,7 @@ const MyRides = ({ rides, onDeleteRide }) => {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredRides.map((ride) => {
+          {[...upcomingRides, ...pastRides].map((ride) => {
             const confirmedPassengers = ride.passengers?.filter(p => p.status === 'confirmed') || []
             const pendingRequests = ride.passengers?.filter(p => p.status === 'pending') || []
             
@@ -226,22 +393,41 @@ const MyRides = ({ rides, onDeleteRide }) => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => navigate(`/ride/${ride.id}`)}
+                      onClick={(e) => handleViewRideDetails(ride.id, e)}
                       className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="View Details"
                     >
                       <EyeIcon className="w-5 h-5" />
                     </button>
+                    
                     {ride.status === 'active' && (
-                      <button
-                        onClick={(e) => handleDeleteRide(ride.id, e)}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Cancel Ride"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
+                      <>
+                        <button
+                          onClick={(e) => handleEditRide(ride.id, e)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Edit Ride"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                        
+                        <button
+                          onClick={(e) => handleCancelRide(ride.id, e)}
+                          className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                          title="Cancel Ride"
+                        >
+                          <XCircleIcon className="w-5 h-5" />
+                        </button>
+                        
+                        <button
+                          onClick={(e) => handleDeleteRide(ride.id, e)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Ride"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>

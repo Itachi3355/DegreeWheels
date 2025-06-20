@@ -1,171 +1,152 @@
-import React, { memo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React from 'react'
+import { motion } from 'framer-motion'
 import { 
   MapPinIcon, 
-  CalendarIcon, 
   ClockIcon, 
-  UserIcon,
+  UserIcon, 
   StarIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  ArrowRightIcon
 } from '@heroicons/react/24/outline'
-import PropTypes from 'prop-types'
 
-const RideCard = memo(({ ride, onBook }) => {
-  const navigate = useNavigate()
-  
-  console.log('RideCard rendered for ride:', ride.id)
-
-  if (!ride) {
-    return null
-  }
-
-  const handleViewDetails = () => {
-    navigate(`/ride/${ride.id}`) // This will match the /ride/:rideId route
+const RideCard = ({ ride, onBook, onViewDetails }) => {
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const formatDate = (dateString) => {
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      })
-    } catch (error) {
-      return 'Invalid date'
-    }
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
-  const formatTime = (dateString) => {
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    } catch (error) {
-      return 'Invalid time'
-    }
-  }
-
-  const getTrustScore = (driver) => {
-    let score = 0
-    if (driver.university) score += 25
-    if (driver.phone) score += 15  
-    if (driver.emergency_contact) score += 20
-    if (driver.car_make && driver.car_model) score += 20
-    if (driver.created_at && new Date() - new Date(driver.created_at) > 30 * 24 * 60 * 60 * 1000) score += 20 // 30+ days old
-    return score
-  }
-  
-  const trustScore = getTrustScore(ride.driver)
-  
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-200">
-      {/* Driver Info */}
-      <div className="flex items-center mb-4">
-        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium mr-3">
-          {ride.driver?.full_name?.charAt(0) || 'U'}
-        </div>
-        <div className="flex-1">
-          <p className="font-medium text-gray-900">
-            {ride.driver?.full_name || 'Unknown Driver'}
-          </p>
-          <p className="text-sm text-gray-500">
-            {ride.driver?.university || 'University Student'}
-          </p>
-        </div>
-        <div className="flex items-center text-yellow-400">
-          <StarIcon className="w-4 h-4 mr-1" />
-          <span className="text-sm text-gray-600">4.8</span>
-        </div>
-      </div>
-
-      {/* Route Info */}
-      <div className="space-y-3 mb-4">
-        <div className="flex items-start">
-          <div className="w-3 h-3 bg-green-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">From</p>
-            <p className="text-sm text-gray-600">{ride.origin || 'Origin not specified'}</p>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="group relative bg-white/80 backdrop-blur-lg rounded-3xl p-6 border border-white/50 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden"
+    >
+      {/* Gradient Background on Hover */}
+      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      
+      {/* Content */}
+      <div className="relative">
+        {/* Header with Driver Info */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">
+                {ride.driver?.full_name?.charAt(0) || 'D'}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg">
+                {ride.driver?.full_name || 'Driver'}
+              </h3>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center">
+                  <StarIcon className="w-4 h-4 text-yellow-400 fill-current" />
+                  <span className="text-sm text-gray-600 ml-1">
+                    {ride.driver?.rating || '4.8'}
+                  </span>
+                </div>
+                <span className="text-gray-300">•</span>
+                <span className="text-sm text-gray-600">
+                  {ride.driver?.rides_completed || 12} rides
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Price Badge */}
+          <div className="text-right">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-2xl font-bold text-lg shadow-lg">
+              {ride.price_per_seat ? `$${ride.price_per_seat}` : 'FREE'}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">per seat</p>
           </div>
         </div>
-        
-        <div className="flex items-start">
-          <div className="w-3 h-3 bg-red-500 rounded-full mt-1 mr-3 flex-shrink-0"></div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">To</p>
-            <p className="text-sm text-gray-600">{ride.destination || 'Destination not specified'}</p>
+
+        {/* Route Information */}
+        <div className="space-y-4 mb-6">
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-green-500 rounded-full mr-4 shadow-sm"></div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-600">From</p>
+              <p className="font-semibold text-gray-900 truncate">{ride.origin}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-red-500 rounded-full mr-4 shadow-sm"></div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-600">To</p>
+              <p className="font-semibold text-gray-900 truncate">{ride.destination}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Time and Date */}
-      <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-        <div className="flex items-center">
-          <CalendarIcon className="w-4 h-4 mr-1" />
-          <span>{formatDate(ride.departure_time)}</span>
+        {/* Trip Details */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-gray-50/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-100">
+            <div className="flex items-center mb-2">
+              <ClockIcon className="w-5 h-5 text-indigo-500 mr-2" />
+              <span className="text-sm text-gray-600">Departure</span>
+            </div>
+            <p className="font-bold text-gray-900">{formatDate(ride.departure_time)}</p>
+            <p className="text-sm text-gray-700">{formatTime(ride.departure_time)}</p>
+          </div>
+          
+          <div className="bg-gray-50/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-100">
+            <div className="flex items-center mb-2">
+              <UserGroupIcon className="w-5 h-5 text-purple-500 mr-2" />
+              <span className="text-sm text-gray-600">Available</span>
+            </div>
+            <p className="font-bold text-gray-900">{ride.available_seats}</p>
+            <p className="text-sm text-gray-700">seats left</p>
+          </div>
         </div>
-        <div className="flex items-center">
-          <ClockIcon className="w-4 h-4 mr-1" />
-          <span>{formatTime(ride.departure_time)}</span>
-        </div>
-        <div className="flex items-center">
-          <UserIcon className="w-4 h-4 mr-1" />
-          <span>{ride.available_seats || 0} seats</span>
-        </div>
-      </div>
 
-      {/* Action Button */}
-      <div className="mb-4">
-        <button 
-          onClick={handleViewDetails}
-          className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-        >
-          View Details
-        </button>
-      </div>
-
-      {/* Additional Info */}
-      {ride.description && (
-        <div className="pt-4 border-t border-gray-200">
-          <p className="text-sm text-gray-600 line-clamp-2">
-            {ride.description}
-          </p>
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onViewDetails(ride)}
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-2xl transition-colors duration-200 flex items-center justify-center"
+          >
+            View Details
+          </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.05, x: 5 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => onBook(ride)}
+            className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold py-3 px-4 rounded-2xl shadow-lg transition-all duration-200 flex items-center justify-center group"
+          >
+            Book Ride
+            <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+          </motion.button>
         </div>
-      )}
 
-      {/* Trust Indicators */}
-      <div className="flex items-center space-x-2 mb-2">
-        {trustScore >= 80 && (
-          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-            ✓ Verified Driver
+        {/* Status Indicator */}
+        <div className="absolute top-4 right-4">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+            ride.status === 'active' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-gray-100 text-gray-800 border border-gray-200'
+          }`}>
+            {ride.status || 'Active'}
           </span>
-        )}
-        {ride.driver.university && (
-          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-            {ride.driver.university}
-          </span>
-        )}
-        {ride.driver.car_make && (
-          <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">
-            {ride.driver.car_make} {ride.driver.car_model}
-          </span>
-        )}
+        </div>
       </div>
-
-      {/* Seats Info - Updated */}
-      <div className="flex items-center space-x-2 text-sm text-gray-600">
-        <UserGroupIcon className="h-4 w-4" />
-        <span>{ride.available_seats} seats available</span>
-      </div>
-    </div>
+    </motion.div>
   )
-})
-
-RideCard.propTypes = {
-  ride: PropTypes.object.isRequired,
-  onBook: PropTypes.func
 }
 
 export default RideCard

@@ -11,9 +11,16 @@ import {
   StarIcon,
   AcademicCapIcon,
   HeartIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ClockIcon,
+  GlobeAltIcon,
+  MapPinIcon,
+  ShareIcon,
+  BookOpenIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
+import Logo from '../common/Logo'
+import DegreeWheelsLogo from '../common/DegreeWheelsLogo'
 
 const Landing = () => {
   const { user } = useAuth()
@@ -21,172 +28,213 @@ const Landing = () => {
   const features = [
     {
       icon: UserGroupIcon,
-      title: 'Connect with Students',
-      description: 'Find rides with verified fellow students from your university community',
-      color: 'from-blue-500 to-cyan-500'
+      title: 'MEET Students',
+      description: 'Connect with verified university peers and build lasting friendships',
+      color: 'from-blue-500 to-indigo-500',
     },
     {
-      icon: MapIcon,
-      title: 'Smart Route Matching',
-      description: 'Advanced AI algorithm matches you with the most convenient rides',
-      color: 'from-emerald-500 to-teal-500'
+      icon: MapPinIcon, 
+      title: 'MOVE Efficiently',
+      description: 'Smart routing and ride matching for seamless campus transportation',
+      color: 'from-green-500 to-emerald-500',
     },
     {
-      icon: ShieldCheckIcon,
-      title: 'Safe & Verified',
-      description: 'Every user verified with university email for maximum safety',
-      color: 'from-violet-500 to-purple-500'
+      icon: ShareIcon,
+      title: 'SHARE Experiences', 
+      description: 'Split costs, share stories, and build your campus community',
+      color: 'from-purple-500 to-violet-500',
     },
     {
-      icon: SparklesIcon,
-      title: 'Karma Points System',
-      description: 'Build reputation, unlock rewards, and become a trusted rider',
-      color: 'from-amber-500 to-orange-500'
+      icon: BookOpenIcon,
+      title: 'SAVE Together',
+      description: 'Share rides to save money and reduce your travel costs',
+      color: 'from-amber-500 to-orange-500',
     }
   ]
 
   const stats = [
-    { number: '10,000+', label: 'Active Students' },
-    { number: '50,000+', label: 'Rides Completed' },
-    { number: '95%', label: 'Safety Rating' },
-    { number: '$2.5M+', label: 'Money Saved' }
+    { number: '10,000+', label: 'Active Students', icon: UserGroupIcon },
+    { number: '50,000+', label: 'Rides Completed', icon: MapIcon },
+    { number: '95%', label: 'Safety Rating', icon: ShieldCheckIcon },
+    { number: '$2.5M+', label: 'Money Saved', icon: CurrencyDollarIcon }
   ]
 
   const testimonials = [
     {
       name: 'Sarah Johnson',
       role: 'Computer Science Student',
-      image: '👩‍💻',
-      quote: 'Amazing app! Found reliable rides to campus every day. The community is so trustworthy.'
+      avatar: '👩‍💻',
+      university: 'MIT',
+      quote: 'Amazing app! Found reliable rides to campus every day. The community is so trustworthy.',
+      rating: 5
     },
     {
       name: 'Mike Chen',
-      role: 'Business Student',
-      image: '👨‍💼',
-      quote: 'Super convenient and safe. I use it every day to get to campus and internship.'
+      role: 'Business Student', 
+      avatar: '👨‍💼',
+      university: 'Stanford',
+      quote: 'Super convenient and safe. I use it every day to get to campus and internship.',
+      rating: 5
     },
     {
       name: 'Emma Wilson',
       role: 'Engineering Student',
-      image: '👩‍🔬',
-      quote: 'The best way to network with other students while saving money on transportation.'
+      avatar: '👩‍🔬',
+      university: 'UC Berkeley',
+      quote: 'The best way to network with other students while saving money on transportation.',
+      rating: 5
     }
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        {/* Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-gradient-to-r from-green-400 to-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+    <div className="min-h-screen">
+      {/* Hero Section with Glassmorphism */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-cyan-50">
+        {/* Animated Background Blobs */}
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.div 
+            animate={{ 
+              x: [0, 100, 0],
+              y: [0, -50, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              duration: 20, 
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="absolute top-20 left-20 w-96 h-96 bg-gradient-to-r from-blue-400/20 to-purple-500/20 rounded-full blur-3xl"
+          />
+          <motion.div 
+            animate={{ 
+              x: [0, -100, 0],
+              y: [0, 50, 0],
+              scale: [1, 0.9, 1]
+            }}
+            transition={{ 
+              duration: 25, 
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }}
+            className="absolute top-40 right-20 w-80 h-80 bg-gradient-to-r from-cyan-400/20 to-emerald-500/20 rounded-full blur-3xl"
+          />
+          <motion.div 
+            animate={{ 
+              x: [0, 50, 0],
+              y: [0, -30, 0],
+              scale: [1, 1.2, 1]
+            }}
+            transition={{ 
+              duration: 15, 
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 5
+            }}
+            className="absolute bottom-20 left-1/2 w-72 h-72 bg-gradient-to-r from-violet-400/20 to-pink-500/20 rounded-full blur-3xl"
+          />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="inline-flex items-center px-6 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-white/50 shadow-lg mb-8"
           >
-            {/* Badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center px-4 py-2 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium mb-8 shadow-lg"
-            >
-              <SparklesIcon className="w-4 h-4 mr-2" />
-              #1 Student Rideshare Platform
-            </motion.div>
+            <SparklesIcon className="w-5 h-5 mr-2 text-indigo-600" />
+            <span className="text-indigo-600 font-semibold">#1 Student Rideshare Platform</span>
+          </motion.div>
 
-            {/* Main Heading */}
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-5xl md:text-7xl font-extrabold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-6 leading-tight"
-            >
-              Share Rides,
-              <br />
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Share Stories
-              </span>
-            </motion.h1>
+          {/* Main Heading */}
+          <div className="text-center mb-8">
+            <DegreeWheelsLogo size="xl" animate={true} />
+            <h1 className="text-6xl font-bold text-gray-900 mb-6 hero-title">
+              Meet • Move • Share • Save
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              The future of university transportation is here. Connect with verified students, 
+              share rides safely, and build lasting friendships on your campus.
+            </p>
+          </div>
 
-            {/* Subtitle */}
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed"
-            >
-              The safest and smartest way for university students to share rides. 
-              Connect with verified peers, save money, and build lasting friendships.
-            </motion.p>
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-xl md:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed"
+          >
+            Connect with fellow students, save money, and build lasting friendships through our intelligent rideshare platform designed exclusively for university communities.
+          </motion.p>
 
-            {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
-            >
-              {user ? (
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-col sm:flex-row gap-6 justify-center mb-16"
+          >
+            {!user ? (
+              <>
                 <Link
-                  to="/dashboard"
-                  className="group inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-xl hover:shadow-2xl"
+                  to="/register"
+                  className="group relative px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
                 >
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative flex items-center">
+                    <AcademicCapIcon className="w-6 h-6 mr-3" />
+                    Start Your Journey
+                    <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-10 py-5 bg-white/80 backdrop-blur-sm text-gray-700 rounded-2xl font-bold text-lg border-2 border-gray-200 hover:border-indigo-300 hover:bg-white/90 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+                >
+                  Sign In
+                </Link>
+              </>
+            ) : (
+              <Link
+                to="/dashboard"
+                className="group relative px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center">
                   Go to Dashboard
                   <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    to="/register"
-                    className="group inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-xl hover:shadow-2xl"
-                  >
-                    Start Sharing Rides
-                    <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                  <Link
-                    to="/login"
-                    className="inline-flex items-center px-8 py-4 text-lg font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-lg transform hover:scale-105 transition-all duration-200"
-                  >
-                    Sign In
-                  </Link>
-                </>
-              )}
-            </motion.div>
+                </div>
+              </Link>
+            )}
+          </motion.div>
 
-            {/* Trust Indicators */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-wrap justify-center items-center gap-8 text-sm text-gray-500"
-            >
-              <div className="flex items-center">
-                <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
-                University Verified
-              </div>
-              <div className="flex items-center">
-                <ShieldCheckIcon className="w-5 h-5 text-blue-500 mr-2" />
-                100% Safe
-              </div>
-              <div className="flex items-center">
-                <StarIcon className="w-5 h-5 text-yellow-500 mr-2" />
-                4.9/5 Rating
-              </div>
-            </motion.div>
+          {/* Trust Indicators */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="flex flex-wrap justify-center items-center gap-8 text-sm text-gray-500"
+          >
+            <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full">
+              <CheckCircleIcon className="w-5 h-5 text-green-500 mr-2" />
+              University Verified
+            </div>
+            <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full">
+              <ShieldCheckIcon className="w-5 h-5 text-blue-500 mr-2" />
+              100% Safe
+            </div>
+            <div className="flex items-center bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full">
+              <StarIcon className="w-5 h-5 text-yellow-500 mr-2" />
+              4.9/5 Rating
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-white/70 backdrop-blur-sm">
+      {/* Stats Section with Modern Cards */}
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -195,29 +243,34 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="text-center"
+                className="text-center group"
               >
-                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-                  {stat.number}
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl mb-4 shadow-lg">
+                    <stat.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+                    {stat.number}
+                  </div>
+                  <div className="text-gray-600 font-medium">{stat.label}</div>
                 </div>
-                <div className="text-gray-600 font-medium">{stat.label}</div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20">
+      {/* Features Section with Glassmorphism Cards */}
+      <section className="py-24 bg-gradient-to-br from-gray-50 to-indigo-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            className="text-center mb-16"
+            className="text-center mb-20"
           >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            <h2 className="text-5xl font-bold text-gray-900 mb-6">
               Why Choose 
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"> RideShare?</span>
+              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> RideShare?</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Built specifically for students, by students. Experience the future of campus transportation.
@@ -231,31 +284,32 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+                className="group relative"
               >
-                {/* Gradient Border */}
-                <div className={`absolute inset-0 bg-gradient-to-r ${feature.color} rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity`}></div>
-                
-                {/* Icon */}
-                <div className={`w-16 h-16 mx-auto mb-6 flex items-center justify-center bg-gradient-to-r ${feature.color} rounded-xl text-white shadow-lg`}>
-                  <feature.icon className="w-8 h-8" />
+                <div className={`${feature.gradient} backdrop-blur-sm rounded-3xl p-8 border border-white/50 shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-3 h-full`}>
+                  {/* Floating Icon */}
+                  <div className="relative mb-6">
+                    <div className={`w-20 h-20 mx-auto flex items-center justify-center bg-gradient-to-r ${feature.color} rounded-2xl text-white shadow-xl transform group-hover:scale-110 transition-transform duration-300`}>
+                      <feature.icon className="w-10 h-10" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-pink-500 to-violet-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </div>
+                  
+                  <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 text-center leading-relaxed">
+                    {feature.description}
+                  </p>
                 </div>
-                
-                {/* Content */}
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 text-center leading-relaxed">
-                  {feature.description}
-                </p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-50 to-purple-50">
+      {/* Testimonials with Modern Card Design */}
+      <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -263,10 +317,10 @@ const Landing = () => {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Loved by Students
+              Loved by Students Everywhere
             </h2>
             <p className="text-xl text-gray-600">
-              See what your fellow students are saying about RideShare
+              Join thousands of happy students who've transformed their commute
             </p>
           </motion.div>
 
@@ -277,22 +331,33 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow"
+                className="group"
               >
-                <div className="flex items-center mb-6">
-                  <div className="text-4xl mr-4">{testimonial.image}</div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-600">{testimonial.role}</p>
+                <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+                  {/* Quote */}
+                  <div className="mb-6">
+                    <div className="text-6xl text-indigo-200 mb-4">"</div>
+                    <p className="text-gray-700 leading-relaxed text-lg">
+                      {testimonial.quote}
+                    </p>
                   </div>
-                </div>
-                <blockquote className="text-gray-700 italic">
-                  "{testimonial.quote}"
-                </blockquote>
-                <div className="flex text-yellow-400 mt-4">
-                  {[...Array(5)].map((_, i) => (
-                    <StarIcon key={i} className="w-5 h-5 fill-current" />
-                  ))}
+
+                  {/* Rating */}
+                  <div className="flex text-yellow-400 mb-6">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <StarIcon key={i} className="w-5 h-5 fill-current" />
+                    ))}
+                  </div>
+
+                  {/* Author */}
+                  <div className="flex items-center">
+                    <div className="text-4xl mr-4">{testimonial.avatar}</div>
+                    <div>
+                      <div className="font-bold text-gray-900">{testimonial.name}</div>
+                      <div className="text-sm text-gray-500">{testimonial.role}</div>
+                      <div className="text-xs text-indigo-600 font-medium">{testimonial.university}</div>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -300,32 +365,40 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      {/* CTA Section with Gradient Background */}
+      <section className="py-24 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }} />
+        </div>
+
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            <h2 className="text-5xl md:text-6xl font-bold mb-6">
               Ready to Start Sharing?
             </h2>
-            <p className="text-xl mb-8 text-blue-100">
-              Join thousands of students already saving money and making connections
+            <p className="text-xl mb-10 text-white/90 max-w-2xl mx-auto">
+              Join thousands of students already saving money and making connections through our platform
             </p>
             
             {!user && (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-6 justify-center">
                 <Link
                   to="/register"
-                  className="inline-flex items-center px-8 py-4 text-lg font-semibold text-blue-600 bg-white rounded-xl hover:bg-blue-50 transform hover:scale-105 transition-all duration-200 shadow-lg"
+                  className="group inline-flex items-center px-10 py-5 text-lg font-bold text-indigo-600 bg-white rounded-2xl hover:bg-gray-50 transform hover:scale-105 transition-all duration-200 shadow-2xl"
                 >
-                  <AcademicCapIcon className="w-6 h-6 mr-2" />
+                  <AcademicCapIcon className="w-6 h-6 mr-3" />
                   Sign Up with University Email
+                  <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link
                   to="/login"
-                  className="inline-flex items-center px-8 py-4 text-lg font-semibold text-white border-2 border-white rounded-xl hover:bg-white hover:text-blue-600 transition-all duration-200"
+                  className="inline-flex items-center px-10 py-5 text-lg font-bold text-white border-2 border-white/50 rounded-2xl hover:bg-white/10 backdrop-blur-sm transition-all duration-200"
                 >
                   Already have an account?
                 </Link>
@@ -336,23 +409,103 @@ const Landing = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-gray-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-lg mr-3">
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                </svg>
+            {/* Centered Logo with Custom Sizing - MINIMALIST TIRE */}
+            <div className="flex items-center justify-center space-x-3 mb-6">
+              {/* Logo Icon - MINIMALIST NO-SPOKES TIRE */}
+              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center shadow-lg border-4 border-gray-300 relative">
+                
+                {/* MINIMALIST ROTATING TIRE */}
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ 
+                    duration: 10, // Normal speed for footer
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                  className="absolute inset-0 w-full h-full"
+                >
+                  {/* NO SPOKES - Clean rim design */}
+                  <svg className="absolute inset-0 w-full h-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <g opacity="0.8">
+                      {/* Outer rim circles */}
+                      <circle cx="12" cy="12" r="10" strokeWidth="2" opacity="0.6"/>
+                      <circle cx="12" cy="12" r="8.5" strokeWidth="1.5" opacity="0.4"/>
+                      <circle cx="12" cy="12" r="7" strokeWidth="1" opacity="0.3"/>
+                      
+                      {/* Tire tread marks */}
+                      <circle cx="12" cy="12" r="9.2" strokeWidth="0.8" opacity="0.5" strokeDasharray="3 6"/>
+                    </g>
+                  </svg>
+                  
+                  {/* Center hub - larger for footer */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-7 h-7 bg-white rounded-full shadow-inner">
+                      <div className="w-6 h-6 bg-gray-200 rounded-full m-0.5"></div>
+                    </div>
+                  </div>
+                </motion.div>
+                
+                {/* FIXED DEGREE SYMBOL */}
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <span className="text-white text-2xl drop-shadow-lg" role="img" aria-label="degree">
+                    🎓
+                  </span>
+                </div>
               </div>
-              <span className="text-2xl font-bold">Campus RideShare</span>
+
+              {/* Text Logo - DegreeWheels (big) + MMSS (small) */}
+              <div className="flex items-center space-x-2">
+                <span className="text-3xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                  DegreeWheels
+                </span>
+                
+                <div className="flex space-x-1">
+                  {[
+                    { letter: 'M', color: 'from-blue-500 to-blue-600' },
+                    { letter: 'M', color: 'from-green-500 to-green-600' },
+                    { letter: 'S', color: 'from-purple-500 to-purple-600' },
+                    { letter: 'S', color: 'from-orange-500 to-orange-600' }
+                  ].map((item, i) => (
+                    <span 
+                      key={i}
+                      className={`w-4 h-4 bg-gradient-to-r ${item.color} text-white text-xs font-bold rounded-full flex items-center justify-center`}
+                    >
+                      {item.letter}
+                    </span>
+                  ))}     
+                </div>
+              </div>
             </div>
-            <p className="text-gray-400 mb-6">
-              Connecting students, one ride at a time.
+
+            {/* Description */}
+            <p className="text-gray-400 mt-4 max-w-2xl mx-auto text-lg leading-relaxed">
+              The #1 university rideshare platform. Built by students, for students. 
+              Safe, reliable, and community-focused transportation solutions.
             </p>
-            <div className="flex justify-center items-center space-x-2 text-gray-400">
-              <HeartIcon className="w-5 h-5 text-red-500" />
-              <span>Made with love for students</span>
+
+            {/* MMSS Philosophy - Optional */}
+            <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+              {[
+                { letter: 'M', word: 'MEET', color: 'text-blue-400' },
+                { letter: 'M', word: 'MOVE', color: 'text-green-400' },
+                { letter: 'S', word: 'SHARE', color: 'text-purple-400' },
+                { letter: 'S', word: 'SAVE', color: 'text-orange-400' }
+              ].map((item, i) => (
+                <div key={i} className="text-center">
+                  <span className={`${item.color} font-bold text-sm`}>{item.word}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-800 mt-12 pt-8">
+              <p className="text-gray-500 text-sm">
+                © 2024 DegreeWheels. All rights reserved. | 
+                <span className="text-gray-400 ml-1">Developed by MMSS</span>
+              </p>
             </div>
           </div>
         </div>

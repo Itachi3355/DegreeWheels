@@ -19,9 +19,27 @@ import ProtectedRoute from './components/auth/ProtectedRoute'
 import RoutePlanner from './components/routes/RoutePlanner'
 import BookingsDashboard from './components/bookings/BookingsDashboard'
 import MyRides from './components/rides/MyRides'
+import RideRequestForm from './components/rides/RideRequestForm'
+import RideOffer from './components/rides/RideOffer'
 
-// Simple wrapper for OfferRide page
-const OfferRidePage = () => <CreateRideForm />
+// Simple pages for missing components
+const TermsPage = () => (
+  <div className="min-h-screen bg-gray-50 pt-20 px-4">
+    <div className="max-w-4xl mx-auto py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Terms of Service</h1>
+      <p className="text-gray-600">Terms of service content will be added here.</p>
+    </div>
+  </div>
+)
+
+const PrivacyPage = () => (
+  <div className="min-h-screen bg-gray-50 pt-20 px-4">
+    <div className="max-w-4xl mx-auto py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
+      <p className="text-gray-600">Privacy policy content will be added here.</p>
+    </div>
+  </div>
+)
 
 function App() {
   return (
@@ -60,11 +78,22 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
+                
+               
+                
                 <Route 
                   path="/offer-ride" 
                   element={
                     <ProtectedRoute>
-                      <OfferRidePage />
+                      <RideOffer />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/request-ride" 
+                  element={
+                    <ProtectedRoute>
+                      <RideRequestForm />
                     </ProtectedRoute>
                   } 
                 />
@@ -116,7 +145,26 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                {/* ✅ SIMPLIFIED CHAT ROUTES - Create simple placeholder */}
+                
+                {/* Rides routes */}
+                <Route 
+                  path="/rides/create" 
+                  element={
+                    <ProtectedRoute>
+                      <CreateRideForm />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/rides" 
+                  element={
+                    <ProtectedRoute>
+                      <RideSearch />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Simplified Chat Routes */}
                 <Route 
                   path="/chat" 
                   element={
@@ -143,14 +191,9 @@ function App() {
                     </ProtectedRoute>
                   } 
                 />
-                <Route 
-                  path="/rides" 
-                  element={
-                    <ProtectedRoute>
-                      <RideSearch />
-                    </ProtectedRoute>
-                  } 
-                />
+                
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
               </Routes>
             </main>
           </div>
