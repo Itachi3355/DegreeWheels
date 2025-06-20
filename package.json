@@ -1,7 +1,7 @@
 {
   "name": "degreewheels-app",
   "version": "1.1.0",
-  "description": "DegreeWheels - University rideshare platform. Meet, Move, Share, Study (MMSS)",
+  "description": "DegreeWheels - University rideshare platform. Meet, Move, Share, Save (MMSS)",
   "private": true,
   "homepage": "https://degreewheels.com",
   "dependencies": {
