@@ -503,7 +503,7 @@ const Landing = () => {
             {/* Divider */}
             <div className="border-t border-gray-800 mt-12 pt-8">
               <p className="text-gray-500 text-sm">
-                © 2024 DegreeWheels. All rights reserved. | 
+                © 2025 DegreeWheels. All rights reserved. | 
                 <span className="text-gray-400 ml-1">Developed by MMSS</span>
               </p>
             </div>

@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import BookingModal from './BookingModal'
 // ❌ REMOVE: import { findCompatibleRides } from '../../utils/matchingAlgorithm'
 //
+
 const RideSearch = () => {
   const { user, profile } = useAuth()
   const { 
@@ -25,7 +26,8 @@ const RideSearch = () => {
   } = useRides()
   
   // State variables
-  const [activeTab, setActiveTab] = useState('requests')
+  const [activeTab, setActiveTab] = useState('requests') // 'rides' or 'requests'
+   // 'active' for rides, 'requests' for passenger requests
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [showRideForm, setShowRideForm] = useState(false)
   const [viewMode, setViewMode] = useState('list')
@@ -40,7 +42,7 @@ const RideSearch = () => {
     destination: '',
     date: '',
     maxPrice: '',
-    status: 'available'
+    status: 'all' // Default to active rides
   })
 
   // Booking modal state
@@ -56,13 +58,15 @@ const RideSearch = () => {
   const statusOptions = [
     { value: 'available', label: 'Available Requests' },
     { value: 'matched', label: 'Matched Requests' },
-    { value: 'all', label: 'All Requests' }
-  ]
-
+    { value: 'all', label: 'All Requests' },
+  { value: 'active', label: 'Active Rides' },
+  { value: 'inactive', label: 'Inactive Rides' },
+  { value: 'all', label: 'All Rides' }
+]
   // Offer ride function
   const handleOfferRide = async (request) => {
     console.log('🚗 Creating ride offer for request:', request.id)
-
+    console.log('DEBUG filteredRides:', filteredRides)
     try {
       // ✅ ADD: Check for existing duplicate rides
       const { data: existingRides, error: checkError } = await supabase
@@ -187,9 +191,9 @@ const RideSearch = () => {
       destination: '',
       date: '',
       maxPrice: '',
-      status: 'available'
+      status: activeTab === 'rides' ? 'active' : 'all'
     })
-  }, [])
+  }, [activeTab])
 
   const handleBookRide = useCallback((ride) => {
     setSelectedRide(ride)
@@ -834,7 +838,7 @@ const RideSearch = () => {
 
         {/* Booking Modal */}
         <BookingModal 
-          open={showBookingModal}
+          isOpen={showBookingModal}
           onClose={() => setShowBookingModal(false)}
           ride={selectedRide}
           user={user}

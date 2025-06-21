@@ -21,7 +21,7 @@ import BookingsDashboard from './components/bookings/BookingsDashboard'
 import MyRides from './components/rides/MyRides'
 import RideRequestForm from './components/rides/RideRequestForm'
 import RideOffer from './components/rides/RideOffer'
-
+import ContactUs from './components/pages/ContactUs'
 // Simple pages for missing components
 const TermsPage = () => (
   <div className="min-h-screen bg-gray-50 pt-20 px-4">
@@ -80,6 +80,7 @@ function App() {
                 />
                 
                
+                <Route path="/contact" element={<ContactUs />} />
                 
                 <Route 
                   path="/offer-ride" 

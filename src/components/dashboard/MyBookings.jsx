@@ -16,6 +16,7 @@ import toast from 'react-hot-toast'
 import ChatModal from '../rides/ChatModal'
 import { useNavigate } from 'react-router-dom'
 import { useDashboard } from '../../hooks/useDashboard'
+import { calculateMapDistance } from '../common/Map'
 
 const MyBookings = React.memo(({ onBookingUpdate }) => {
   const [showChatModal, setShowChatModal] = useState(false)
@@ -119,6 +120,26 @@ const MyBookings = React.memo(({ onBookingUpdate }) => {
         </button>
       )
     }
+    if (booking.status === 'pending' && booking.passenger_id === user.id) {
+    buttons.push(
+      <button
+        key="approve"
+        onClick={() => handleAcceptBooking(booking.id)}
+        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+      >
+        <CheckIcon className="w-4 h-4 mr-1" />
+        Approve Offer
+      </button>,
+      <button
+        key="reject"
+        onClick={() => handleRejectBooking(booking.id)}
+        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+      >
+        <XMarkIcon className="w-4 h-4 mr-1" />
+        Reject Offer
+      </button>
+    )
+  }
     
     if (booking.status === 'accepted') {
       buttons.push(
@@ -229,7 +250,35 @@ const MyBookings = React.memo(({ onBookingUpdate }) => {
                    booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                 </span>
               </div>
+              
 
+{booking.status === 'accepted' && booking.passenger_id === user.id && booking.ride?.driver && (
+  <div className="bg-blue-50 rounded-lg p-4 mb-4">
+    <h4 className="font-semibold text-blue-900 mb-2">Driver Details</h4>
+    <div className="flex items-center space-x-3">
+      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+        <span className="text-lg font-medium text-blue-600">
+          {booking.ride.driver.full_name?.charAt(0) || 'D'}
+        </span>
+      </div>
+      <div>
+        <p className="font-medium text-gray-900">{booking.ride.driver.full_name || 'Driver'}</p>
+        <p className="text-sm text-gray-500">{booking.ride.driver.email}</p>
+        {booking.ride.driver.phone && (
+          <p className="text-sm text-gray-500">{booking.ride.driver.phone}</p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{booking.ride?.origin_coordinates && booking.ride?.destination_coordinates && (
+  <div className="flex items-center text-sm text-gray-600 mb-2">
+    <span className="font-medium text-indigo-600">
+      Distance: ~{calculateMapDistance(booking.ride.origin_coordinates, booking.ride.destination_coordinates)} miles
+    </span>
+  </div>
+)}
               <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                 <div className="flex items-center">
                   <CalendarIcon className="w-4 h-4 mr-2" />

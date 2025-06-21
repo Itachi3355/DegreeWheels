@@ -13,7 +13,8 @@ import {
   ChevronDownIcon,
   HomeIcon,
   MapIcon,
-  PlusIcon
+  PlusIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNotifications } from '../../hooks/useNotifications'
@@ -210,56 +211,65 @@ const Header = () => {
 
           {/* User Menu */}
           <div className="flex items-center space-x-4">
+            {/* Notification Bell */}
+            <div className="relative" ref={notificationRef}>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleNotificationToggle}
+                className="relative p-2 text-gray-600 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-full transition-colors"
+              >
+                <BellIcon className="w-6 h-6" />
+                {unreadCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-red-500 rounded-full shadow-lg"
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </motion.span>
+                )}
+                {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+              </motion.button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div 
+                  className="absolute right-0 top-full mt-2 z-[9999]"
+                  style={{
+                    position: 'fixed',
+                    top: '4rem',
+                    right: '1rem',
+                    zIndex: 99999
+                  }}
+                >
+                  <NotificationDropdown 
+                    notifications={notifications}
+                    unreadCount={unreadCount}
+                    onClose={handleCloseNotifications}
+                    onMarkAsRead={handleMarkAsRead}
+                    onMarkAllAsRead={handleMarkAllAsRead}
+                    onDelete={handleDeleteNotification}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Contact Us Icon/Button */}
+            <Link
+              to="/contact"
+              className="p-2 text-gray-600 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-full transition-colors"
+              title="Contact Us"
+            >
+              <EnvelopeIcon className="w-6 h-6" />
+            </Link>
+
             {user ? (
               <>
-                {/* Notification Bell */}
-                <div className="relative" ref={notificationRef}>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleNotificationToggle}
-                    className="relative p-2 text-gray-600 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-full transition-colors"
-                  >
-                    <BellIcon className="w-6 h-6" />
-                    {unreadCount > 0 && (
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gradient-to-r from-pink-500 to-red-500 rounded-full shadow-lg"
-                      >
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </motion.span>
-                    )}
-                    {loading && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
-                  </motion.button>
-
-                  {/* Notification Dropdown */}
-                  {showNotifications && (
-                    <div 
-                      className="absolute right-0 top-full mt-2 z-[9999]"
-                      style={{
-                        position: 'fixed',
-                        top: '4rem',
-                        right: '1rem',
-                        zIndex: 99999
-                      }}
-                    >
-                      <NotificationDropdown 
-                        notifications={notifications}
-                        unreadCount={unreadCount}
-                        onClose={handleCloseNotifications}
-                        onMarkAsRead={handleMarkAsRead}
-                        onMarkAllAsRead={handleMarkAllAsRead}
-                        onDelete={handleDeleteNotification}
-                      />
-                    </div>
-                  )}
-                </div>
-
                 {/* User Profile Menu */}
                 <div className="relative" ref={profileMenuRef}>
                   <motion.button

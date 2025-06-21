@@ -23,7 +23,28 @@ export const useDashboard = () => {
       setLoading(false)
       return
     }
+    // ...other fetches...
 
+  // Fetch bookings as passenger
+  const { data: bookingsAsPassenger } = await supabase
+    .from('ride_bookings')
+    .select('*, ride:rides(*)')
+    .eq('passenger_id', user.id)
+
+  // Fetch bookings as driver
+  const { data: bookingsAsDriver } = await supabase
+    .from('ride_bookings')
+    .select('*, ride:rides(*)')
+    .eq('driver_id', user.id)
+
+  // Combine both
+  setDashboardData(prev => ({
+    ...prev,
+    myBookings: [
+      ...(bookingsAsPassenger || []),
+      ...(bookingsAsDriver || [])
+    ]
+  }))
     const now = Date.now()
     if (!forceRefresh && (fetchingRef.current || (now - lastFetchRef.current) < 1000)) {
       return
@@ -46,6 +67,7 @@ export const useDashboard = () => {
           .from('passenger_ride_requests')
           .select(`*, passenger:profiles!passenger_ride_requests_passenger_id_fkey(*)`)
           .eq('passenger_id', user.id)
+          .in('status', ['pending', 'open'])
           .order('created_at', { ascending: false }),
         
         supabase
@@ -58,7 +80,8 @@ export const useDashboard = () => {
           .from('ride_bookings')
           .select(`*, ride:rides(*), passenger:profiles!ride_bookings_passenger_id_fkey(*)`)
           .eq('driver_id', user.id)
-          .eq('status', 'pending')
+          //.eq('status', 'pending')
+          .in('status', ['pending', 'accepted', 'confirmed'])
           .order('created_at', { ascending: false })
       ])
 
@@ -70,7 +93,10 @@ export const useDashboard = () => {
       const newDashboardData = {
         myRides: ridesResponse.data || [],
         myRequests: requestsResponse.data || [],
-        myBookings: bookingsResponse.data || [],
+        myBookings: [
+  ...(bookingsResponse.data || []),
+  ...(incomingResponse.data || [])
+],
         incomingRequests: incomingResponse.data || []
       }
 
@@ -92,6 +118,7 @@ export const useDashboard = () => {
       fetchingRef.current = false
     }
   }, [])
+  
 
   useEffect(() => {
     if (user?.id && (userIdRef.current !== user.id || !hasInitialLoad)) {
@@ -239,7 +266,12 @@ export const useDashboard = () => {
       totalRides: dashboardData.myRides.length,
       totalRequests: dashboardData.myRequests.length,
       totalBookings: dashboardData.myBookings.length,
-      incomingCount: dashboardData.incomingRequests.length
+      incomingCount: dashboardData.incomingRequests.length,
+
+      pendingRides: dashboardData.myRides.filter(r => r.status === 'pending').length,
+      pendingRequests: dashboardData.myRequests.filter(r => r.status === 'pending').length,
+      pendingBookings: dashboardData.myBookings.filter(b => b.status === 'pending').length,
+      pendingIncoming: dashboardData.incomingRequests.filter(r => r.status === 'pending').length,
     },
     fetchDashboardData: () => fetchDashboardData(true),
     approveRequest,

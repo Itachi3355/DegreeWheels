@@ -25,7 +25,14 @@ const BookingModal = ({ ride, isOpen, onClose, onConfirm }) => {
     setIsSubmitting(true)
     
     try {
-      await onConfirm(formData)
+      await bookRide(
+        ride.id,
+        ride.driver_id,
+        formData.seats,
+        formData.pickupNotes,
+        formData.phone
+      )
+
       onClose()
     } catch (error) {
       console.error('Booking failed:', error)

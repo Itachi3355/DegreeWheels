@@ -3,8 +3,68 @@ import React, { useRef, useEffect, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 
 // Set access token
-mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN
-
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN
+const calculateMapDistance = (originCoords, destCoords) => {
+    if (!originCoords || !destCoords) return 'N/A'
+    
+    try {
+      // ✅ STANDARDIZE: Use the same parsing logic as RideSearch
+      let originLatLng, destLatLng
+      
+      // Parse origin coordinates
+      if (typeof originCoords === 'string') {
+        // Handle string format: "(-96.944127,32.82938)"
+        const cleanOrigin = originCoords.replace(/[()]/g, '').split(',').map(Number)
+        originLatLng = [cleanOrigin[1], cleanOrigin[0]] // [lat, lng]
+      } else if (Array.isArray(originCoords)) {
+        // Handle array format: [-96.944127, 32.82938] (lng, lat from Mapbox)
+        originLatLng = [originCoords[1], originCoords[0]] // Convert to [lat, lng]
+      } else {
+        return 'N/A'
+      }
+      
+      // Parse destination coordinates
+      if (typeof destCoords === 'string') {
+        // Handle string format: "(-96.944127,32.82938)"
+        const cleanDest = destCoords.replace(/[()]/g, '').split(',').map(Number)
+        destLatLng = [cleanDest[1], cleanDest[0]] // [lat, lng]
+      } else if (Array.isArray(destCoords)) {
+        // Handle array format: [-96.944127, 32.82938] (lng, lat from Mapbox)
+        destLatLng = [destCoords[1], destCoords[0]] // Convert to [lat, lng]
+      } else {
+        return 'N/A'
+      }
+      
+      console.log('🗺️ Map distance calculation:', {
+        origin: originLatLng,
+        dest: destLatLng,
+        originRaw: originCoords,
+        destRaw: destCoords
+      })
+      
+      const [lat1, lon1] = originLatLng
+      const [lat2, lon2] = destLatLng
+      
+      const R = 3959 // Earth's radius in miles
+      const dLat = (lat2 - lat1) * Math.PI / 180
+      const dLon = (lon2 - lon1) * Math.PI / 180
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2)
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+      const distance = R * c
+      
+      const result = Math.round(distance * 10) / 10 // Round to 1 decimal place
+      console.log('🗺️ Map calculated distance:', result, 'miles')
+      return result
+      
+    } catch (error) {
+      console.warn('Error calculating map distance:', error)
+      return 'N/A'
+    }
+  }
+  export { calculateMapDistance }
 const Map = ({ 
   rides = [], 
   height = '400px', 
@@ -299,7 +359,14 @@ const Map = ({
 
         markers.current.push(originMarker, destMarker)
         validMarkers += 2
-
+        // Draw route line between origin and destination
+        if (map.current.isStyleLoaded()) {
+  drawRoute(originCoords, destCoords, `route-${ride.id}`)
+} else {
+  map.current.once('styledata', () => {
+    drawRoute(originCoords, destCoords, `route-${ride.id}`)
+  })
+}
         // Add distance label between markers
         if (validMarkers >= 2) {
           const midpoint = [
@@ -362,66 +429,7 @@ const Map = ({
   }, [rides, mapLoaded, mapError])
 
   // ✅ ADD: Distance calculation function for map popups
-  const calculateMapDistance = (originCoords, destCoords) => {
-    if (!originCoords || !destCoords) return 'N/A'
-    
-    try {
-      // ✅ STANDARDIZE: Use the same parsing logic as RideSearch
-      let originLatLng, destLatLng
-      
-      // Parse origin coordinates
-      if (typeof originCoords === 'string') {
-        // Handle string format: "(-96.944127,32.82938)"
-        const cleanOrigin = originCoords.replace(/[()]/g, '').split(',').map(Number)
-        originLatLng = [cleanOrigin[1], cleanOrigin[0]] // [lat, lng]
-      } else if (Array.isArray(originCoords)) {
-        // Handle array format: [-96.944127, 32.82938] (lng, lat from Mapbox)
-        originLatLng = [originCoords[1], originCoords[0]] // Convert to [lat, lng]
-      } else {
-        return 'N/A'
-      }
-      
-      // Parse destination coordinates
-      if (typeof destCoords === 'string') {
-        // Handle string format: "(-96.944127,32.82938)"
-        const cleanDest = destCoords.replace(/[()]/g, '').split(',').map(Number)
-        destLatLng = [cleanDest[1], cleanDest[0]] // [lat, lng]
-      } else if (Array.isArray(destCoords)) {
-        // Handle array format: [-96.944127, 32.82938] (lng, lat from Mapbox)
-        destLatLng = [destCoords[1], destCoords[0]] // Convert to [lat, lng]
-      } else {
-        return 'N/A'
-      }
-      
-      console.log('🗺️ Map distance calculation:', {
-        origin: originLatLng,
-        dest: destLatLng,
-        originRaw: originCoords,
-        destRaw: destCoords
-      })
-      
-      const [lat1, lon1] = originLatLng
-      const [lat2, lon2] = destLatLng
-      
-      const R = 3959 // Earth's radius in miles
-      const dLat = (lat2 - lat1) * Math.PI / 180
-      const dLon = (lon2 - lon1) * Math.PI / 180
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2)
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
-      const distance = R * c
-      
-      const result = Math.round(distance * 10) / 10 // Round to 1 decimal place
-      console.log('🗺️ Map calculated distance:', result, 'miles')
-      return result
-      
-    } catch (error) {
-      console.warn('Error calculating map distance:', error)
-      return 'N/A'
-    }
-  }
+  
 
   // Show error state with helpful troubleshooting
   if (mapError) {
@@ -449,6 +457,48 @@ const Map = ({
       </div>
     )
   }
+  // ...existing code...
+
+// Draw a route (polyline) between two points
+const drawRoute = (originCoords, destCoords, routeId) => {
+  if (!map.current || !originCoords || !destCoords) return
+
+  // Remove existing route with same id if present
+  if (map.current.getSource(routeId)) {
+    try {
+      map.current.removeLayer(routeId)
+      map.current.removeSource(routeId)
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  map.current.addSource(routeId, {
+    type: 'geojson',
+    data: {
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: [originCoords, destCoords]
+      }
+    }
+  })
+
+  map.current.addLayer({
+    id: routeId,
+    type: 'line',
+    source: routeId,
+    layout: {
+      'line-join': 'round',
+      'line-cap': 'round'
+    },
+    paint: {
+      'line-color': '#3B82F6',
+      'line-width': 4,
+      'line-opacity': 0.7
+    }
+  })
+}
 
   return (
     <div className="relative w-full h-full"> {/* 🔧 CHANGE: Use h-full instead of setting explicit height */}

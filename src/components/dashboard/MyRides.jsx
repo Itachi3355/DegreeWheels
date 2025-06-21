@@ -344,7 +344,7 @@ const MyRides = ({ rides, onDeleteRide, onRefetch }) => {
       ) : (
         <div className="space-y-4">
           {[...upcomingRides, ...pastRides].map((ride) => {
-            const confirmedPassengers = ride.passengers?.filter(p => p.status === 'confirmed') || []
+            const confirmedPassengers = ride.passengers?.filter(p => ['confirmed', 'accepted'].includes(p.status)) || []
             const pendingRequests = ride.passengers?.filter(p => p.status === 'pending') || []
             
             return (
