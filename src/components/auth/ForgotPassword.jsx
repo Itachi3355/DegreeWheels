@@ -19,15 +19,12 @@ const ForgotPassword = () => {
 
   const onSubmit = async (data) => {
     setIsLoading(true)
-    
     try {
       const { error } = await resetPassword(data.email)
-      
       if (error) {
         toast.error(error.message)
         return
       }
-
       setEmailSent(true)
       toast.success('Password reset email sent! Please check your inbox.')
     } catch (err) {
@@ -116,20 +113,7 @@ const ForgotPassword = () => {
             </div>
 
             <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Sending...
-                  </div>
-                ) : (
-                  'Send reset link'
-                )}
-              </button>
+              <button type="submit">Test Submit</button>
             </div>
 
             <div className="text-center">

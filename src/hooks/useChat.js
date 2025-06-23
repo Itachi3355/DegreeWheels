@@ -2,42 +2,54 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { refreshBookingsUnreadCounts } from './useDashboard'
+import { useDashboard } from '../hooks/useDashboard'
 
-const useChat = (rideId, isActive = true) => {
+export default function useChat(rideId, isOpen) {
   const { user } = useAuth()
+  const { refetch } = useDashboard();
   const [messages, setMessages] = useState([])
   const [participants, setParticipants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [dummyState, setDummyState] = useState(false);
   const channelRef = useRef(null)
+
+  // Update unread message count
+  const updateUnreadCount = (messages) => {
+    const count = messages?.filter(msg => !msg.read && msg.sender_id !== user.id).length || 0;
+    setUnreadCount(count);
+    console.log('💬 Updated unread messages count:', count);
+
+    // Force UI re-render by updating a dummy state
+    setDummyState(prev => !prev);
+  }
 
   // Fetch messages function
   const fetchMessages = async () => {
     try {
       console.log('💬 Fetching messages for ride:', rideId)
-      
+
       const { data, error } = await supabase
         .from('messages')
-        .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey(
-            id,
-            full_name,
-            email
-          )
-        `)
+        .select(`id, ride_id, sender_id, content, read, created_at, sender:profiles(id, full_name, email)`)
         .eq('ride_id', rideId)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: true }) // <-- this is correct
 
       if (error) throw error
 
       console.log('💬 Fetched messages:', data?.length || 0)
       setMessages(data || [])
+
+      // Update unread message count
+      updateUnreadCount(data)
     } catch (error) {
       console.error('💬 Error fetching messages:', error)
       setError(error.message)
     }
   }
+  
 
   // Fetch participants function
   const fetchParticipants = async () => {
@@ -203,16 +215,47 @@ const useChat = (rideId, isActive = true) => {
     }
   }
 
+  // Mark messages as read function
+  const markMessagesAsRead = async (rideId) => {
+    try {
+      const { data, error, count } = await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('ride_id', rideId)
+        .neq('sender_id', user.id)
+        .select(); // fetch updated rows
+
+      if (error) {
+        console.error('❌ Error marking messages as read:', error);
+      } else {
+        console.log(`💬 Messages marked as read. Rows updated: ${data ? data.length : 0}`);
+        if (data) {
+          console.log('💬 Updated messages:', data);
+        }
+      }
+
+      // Add a short delay to allow DB to update before refetching dashboard
+      setTimeout(() => {
+        if (typeof refetch === 'function') {
+          refetch();
+          console.log('💬 Dashboard refetch triggered (after delay)');
+        }
+      }, 250);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
   // Main effect with inline subscription setup
   useEffect(() => {
-    if (!rideId || !isActive || !user?.id) {
+    if (!rideId || !isOpen || !user?.id) {
       setMessages([])
       setParticipants([])
       setLoading(false)
       return
     }
 
-    console.log('💬 useChat effect running for:', rideId, 'active:', isActive)
+    console.log('💬 useChat effect running for:', rideId, 'active:', isOpen)
     
     // Initialize chat
     const initializeChat = async () => {
@@ -248,32 +291,25 @@ const useChat = (rideId, isActive = true) => {
                 filter: `ride_id=eq.${rideId}`
               },
               async (payload) => {
-                console.log('💬 New message received via subscription:', payload.new)
-                
-                // Only add if it's not from current user (to avoid duplicates with optimistic updates)
+                console.log('💬 New message received via subscription:', payload.new);
+
                 if (payload.new.sender_id !== user.id) {
-                  // Fetch the complete message with sender info
                   const { data: newMessage } = await supabase
                     .from('messages')
-                    .select(`
-                      *,
-                      sender:profiles!messages_sender_id_fkey(
-                        id,
-                        full_name,
-                        email
-                      )
-                    `)
+                    .select(`id, ride_id, sender_id, content, read, created_at, sender:profiles(id, full_name, email)`)
                     .eq('id', payload.new.id)
-                    .single()
+                    .single();
 
                   if (newMessage) {
                     setMessages(prev => {
-                      // Check if message already exists
                       if (prev.some(msg => msg.id === newMessage.id)) {
-                        return prev
+                        return prev;
                       }
-                      return [...prev, newMessage]
-                    })
+                      return [...prev, newMessage];
+                    });
+
+                    // Update unread message count
+                    updateUnreadCount([...messages, newMessage]);
                   }
                 }
               }
@@ -304,7 +340,33 @@ const useChat = (rideId, isActive = true) => {
       console.log('💬 useChat cleanup for:', rideId)
       cleanupSubscription()
     }
-  }, [rideId, isActive, user?.id])
+  }, [rideId, isOpen, user?.id])
+
+  // Mark messages as read effect
+  useEffect(() => {
+  if (isOpen && rideId && user?.id) {
+    console.log('💬 Marking messages as read for ride:', rideId);
+
+    supabase
+      .from('messages')
+      .update({ read: true })
+      .eq('ride_id', rideId)
+      .neq('sender_id', user.id)
+      .eq('read', false)
+      .then(({ error }) => {
+        if (error) {
+          console.error('💬 Error marking messages as read:', error);
+        } else {
+          console.log('💬 Messages marked as read');
+
+          // Fetch updated messages to recalculate unread count
+          fetchMessages().then((updatedMessages) => {
+            updateUnreadCount(updatedMessages);
+          });
+        }
+      });
+  }
+}, [isOpen, rideId, user?.id])
 
   return {
     messages,
@@ -312,8 +374,7 @@ const useChat = (rideId, isActive = true) => {
     sendMessage,
     shareLocation,
     loading,
-    error
+    error,
+    unreadCount
   }
 }
-
-export default useChat

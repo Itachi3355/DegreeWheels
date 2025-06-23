@@ -174,6 +174,12 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut()
+      // Ignore AuthSessionMissingError
+      if (error && error.name === 'AuthSessionMissingError') {
+        setUser(null)
+        setProfile(null)
+        return { error: null }
+      }
       if (error) throw error
       
       setUser(null)
@@ -211,6 +217,12 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  const resetPassword = async (email) => {
+    return await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://degreewheels.com/reset-password'
+    })
+  }
+
   const value = {
     user,
     profile,
@@ -218,7 +230,8 @@ export const AuthProvider = ({ children }) => {
     signUp,
     signIn,
     signOut,
-    updateProfile
+    updateProfile,
+    resetPassword
   }
 
   return (

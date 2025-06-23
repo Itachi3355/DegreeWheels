@@ -110,6 +110,7 @@ const LocationInput = ({
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(query)
     }, 300)
+    
 
     return () => {
       if (debounceRef.current) {
@@ -122,24 +123,17 @@ const LocationInput = ({
   const handleInputChange = (e) => {
     const value = e.target.value
     setQuery(value)
-    
-    if (!value.trim()) {
-      setSuggestions([])
-      setShowSuggestions(false)
-      if (onLocationSelect) {
-        onLocationSelect(null)
-      }
-    }
+    setSuggestions([])
+    setShowSuggestions(false)
+    // DO NOT call onLocationSelect(null) here!
   }
 
   // Handle suggestion selection
   const handleSuggestionClick = (suggestion) => {
-    console.log('📍 Selected location:', suggestion)
     setQuery(suggestion.name)
     setSuggestions([])
     setShowSuggestions(false)
     setSelectedIndex(-1)
-    
     if (onLocationSelect) {
       onLocationSelect(suggestion)
     }

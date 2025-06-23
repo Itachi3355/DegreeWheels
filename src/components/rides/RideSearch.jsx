@@ -10,8 +10,7 @@ import LocationInput from '../common/LocationInput'
 import Map from '../common/Map'
 import toast from 'react-hot-toast'
 import BookingModal from './BookingModal'
-// ❌ REMOVE: import { findCompatibleRides } from '../../utils/matchingAlgorithm'
-//
+import { formatDateInBrowserTz, formatTimeInBrowserTz } from '../../utils/timezone'
 
 const RideSearch = () => {
   const { user, profile } = useAuth()
@@ -602,11 +601,7 @@ const RideSearch = () => {
                               <ClockIcon className="w-4 h-4 mr-1" />
                               {request.preferred_departure_time ? (
                                 <span>
-                                  {new Date(request.preferred_departure_time).toLocaleDateString()} at{' '}
-                                  {new Date(request.preferred_departure_time).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                                  {formatDateInBrowserTz(request.preferred_departure_time)} at {formatTimeInBrowserTz(request.preferred_departure_time)}
                                 </span>
                               ) : (
                                 <span>Flexible timing</span>
@@ -662,6 +657,13 @@ const RideSearch = () => {
         ) : (
           // Available Rides Tab
           <div>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Available Rides</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                These rides are offered by drivers. Click "Book Now" to reserve your seat.
+              </p>
+            </div>
+
             <div className="flex justify-between items-center mb-6">
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
@@ -700,6 +702,9 @@ const RideSearch = () => {
                 <div className="p-4 border-b border-gray-200 bg-gray-50">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-medium text-gray-900">Available Rides Map</h3>
+                    <p className="text-gray-600 text-sm">
+                      These rides are offered by drivers. Click "Book Ride" to reserve your seat.
+                    </p>
                     <div className="text-sm text-gray-600">
                       Showing {filteredRides.length} rides
                     </div>
@@ -757,11 +762,7 @@ const RideSearch = () => {
                             <div className="flex items-center">
                               <ClockIcon className="w-4 h-4 mr-1" />
                               <span>
-                                {new Date(ride.departure_time).toLocaleDateString()} at{' '}
-                                {new Date(ride.departure_time).toLocaleTimeString([], { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
+                                {formatDateInBrowserTz(ride.departure_time)} at {formatTimeInBrowserTz(ride.departure_time)}
                               </span>
                             </div>
                             
@@ -790,6 +791,11 @@ const RideSearch = () => {
                                 <p className="text-xs text-gray-500">
                                   {profile?.vehicle_type ? `${profile.vehicle_type} - ${profile.license_plate}` : 'Vehicle details not provided'}
                                 </p>
+                                {user?.id === ride.driver_id && (
+                                  <span className="inline-block mt-1 text-xs text-blue-600 font-semibold">
+                                    You offered this ride
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -797,14 +803,26 @@ const RideSearch = () => {
                       </div>
                       
                       <div className="flex space-x-2">
+                        {user?.id !== ride.driver_id ? (
+  <button
+    onClick={() => handleBookRide(ride)}
+    className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+  >
+    Book Now
+  </button>
+) : (
+  <button
+    disabled
+    className="flex-1 bg-gray-300 text-gray-500 px-4 py-2 rounded-lg cursor-not-allowed"
+  >
+    You offered this ride
+  </button>
+)}
                         <button
-                          onClick={() => handleBookRide(ride)}
-                          className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          Book Now
-                        </button>
-                        <button
-                          onClick={() => console.log('View details:', ride)}
+                          onClick={() => {
+                            setSelectedRide(ride)
+                            setShowDetailsModal(true)
+                          }}
                           className="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                           Details
@@ -845,60 +863,111 @@ const RideSearch = () => {
         />
 
         {/* Details Modal - For passenger requests */}
-        {showDetailsModal && selectedRequest && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-auto">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Request Details</h3>
-                
-                {/* Request info */}
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">From:</span>
-                    <p className="text-gray-900">{selectedRequest.origin}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">To:</span>
-                    <p className="text-gray-900">{selectedRequest.destination}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Date & Time:</span>
-                    <p className="text-gray-900">
-                      {new Date(selectedRequest.preferred_departure_time).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">Passengers:</span>
-                    <p className="text-gray-900">{selectedRequest.passenger_count}</p>
-                  </div>
-                  {selectedRequest.notes && (
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">Notes:</span>
-                      <p className="text-gray-900">{selectedRequest.notes}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 px-6 py-4 rounded-b-lg">
-                <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={() => setShowDetailsModal(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-                  >
-                    Close
-                  </button>
-                  <button
-                    onClick={() => handleOfferRide(selectedRequest)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                  >
-                    Offer Ride
-                  </button>
-                </div>
-              </div>
+        {showDetailsModal && selectedRide && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 40 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 40 }}
+      transition={{ duration: 0.25 }}
+      className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-lg mx-auto overflow-hidden"
+    >
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <MapPinIcon className="w-10 h-10 text-white drop-shadow-lg" />
+          <div>
+            <h3 className="text-2xl font-bold text-white">Ride Details</h3>
+            <p className="text-indigo-100 text-sm">{selectedRide.origin} → {selectedRide.destination}</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowDetailsModal(false)}
+          className="text-white hover:bg-white/20 rounded-full p-2 transition"
+          aria-label="Close"
+        >
+          <XMarkIcon className="w-7 h-7" />
+        </button>
+      </div>
+      {/* Content */}
+      <div className="p-6 space-y-6">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <ClockIcon className="w-5 h-5 text-indigo-600" />
+            <span className="font-semibold text-gray-700">Date & Time:</span>
+            <span className="text-gray-900">
+              {formatDateInBrowserTz(selectedRide.departure_time)} at {formatTimeInBrowserTz(selectedRide.departure_time)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <UserIcon className="w-5 h-5 text-blue-600" />
+            <span className="font-semibold text-gray-700">Available Seats:</span>
+            <span className="text-gray-900">{selectedRide.available_seats}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CurrencyDollarIcon className="w-5 h-5 text-amber-500" />
+            <span className="font-semibold text-gray-700">Price:</span>
+            <span className="text-gray-900">
+              {selectedRide.price ? `$${selectedRide.price}` : 'Free'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`h-3 w-3 rounded-full ${selectedRide.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+            <span className="font-semibold text-gray-700">Status:</span>
+            <span className="text-gray-900 capitalize">{selectedRide.status}</span>
+          </div>
+          {selectedRide.origin_coordinates && selectedRide.destination_coordinates && (
+            <div className="flex items-center gap-2">
+              <MapIcon className="w-5 h-5 text-purple-500" />
+              <span className="font-semibold text-gray-700">Distance:</span>
+              <span className="text-indigo-700 font-semibold">
+                ~{calculateDistance(selectedRide.origin_coordinates, selectedRide.destination_coordinates)} miles
+              </span>
+            </div>
+          )}
+        </div>
+        <hr className="my-2" />
+        {/* Driver Info */}
+        <div className="flex items-center gap-4">
+          <img
+            src={profile?.avatar_url || '/default-avatar.png'}
+            alt="Driver Avatar"
+            className="h-14 w-14 rounded-full border-2 border-indigo-200 shadow"
+          />
+          <div>
+            <div className="font-semibold text-gray-900">{profile?.full_name || 'Driver'}</div>
+            <div className="text-xs text-gray-500">
+              {profile?.vehicle_type ? `${profile.vehicle_type} - ${profile.license_plate}` : 'Vehicle details not provided'}
+            </div>
+            {user?.id === selectedRide.driver_id && (
+              <span className="inline-block mt-1 text-xs text-blue-600 font-semibold">
+                You offered this ride
+              </span>
+            )}
+          </div>
+        </div>
+        {selectedRide.notes && (
+          <div className="flex items-start gap-2 mt-2">
+            <ListBulletIcon className="w-5 h-5 text-purple-500 mt-1" />
+            <div>
+              <span className="font-semibold text-gray-700">Notes:</span>
+              <p className="text-gray-900">{selectedRide.notes}</p>
             </div>
           </div>
         )}
+      </div>
+      {/* Footer */}
+      <div className="bg-gray-50 px-6 py-4 flex justify-end">
+        <button
+          onClick={() => setShowDetailsModal(false)}
+          className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition"
+        >
+          Close
+        </button>
+      </div>
+    </motion.div>
+  </div>
+)}
       </div>
     </div>
   )

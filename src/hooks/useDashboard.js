@@ -18,106 +18,98 @@ export const useDashboard = () => {
   const lastFetchRef = useRef(0)
   const userIdRef = useRef(null)
 
+  // Fix Supabase queries causing 400 errors
+  // Fetch unread message counts for bookings
+  const fetchUnreadCounts = async (bookings) => {
+    // For each booking, fetch unread messages for the current user
+    const bookingsWithUnread = await Promise.all(
+      bookings.map(async (booking) => {
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact' })
+          .eq('ride_id', booking.ride_id)
+          .neq('sender_id', user.id)
+          .eq('read', false)
+        return { ...booking, unreadMessages: count || 0 }
+      })
+    )
+    return bookingsWithUnread
+  }
+
   const fetchDashboardData = useCallback(async (forceRefresh = false) => {
     if (!user?.id) {
-      setLoading(false)
-      return
-    }
-    // ...other fetches...
-
-  // Fetch bookings as passenger
-  const { data: bookingsAsPassenger } = await supabase
-    .from('ride_bookings')
-    .select('*, ride:rides(*)')
-    .eq('passenger_id', user.id)
-
-  // Fetch bookings as driver
-  const { data: bookingsAsDriver } = await supabase
-    .from('ride_bookings')
-    .select('*, ride:rides(*)')
-    .eq('driver_id', user.id)
-
-  // Combine both
-  setDashboardData(prev => ({
-    ...prev,
-    myBookings: [
-      ...(bookingsAsPassenger || []),
-      ...(bookingsAsDriver || [])
-    ]
-  }))
-    const now = Date.now()
-    if (!forceRefresh && (fetchingRef.current || (now - lastFetchRef.current) < 1000)) {
-      return
+      setLoading(false);
+      return;
     }
 
-    fetchingRef.current = true
-    lastFetchRef.current = now
-    
     try {
-      setLoading(true)
+      setLoading(true);
 
       const [ridesResponse, requestsResponse, bookingsResponse, incomingResponse] = await Promise.all([
         supabase
           .from('rides')
-          .select(`*, driver:profiles!rides_driver_id_fkey(*), passengers:ride_bookings(*, passenger:profiles!ride_bookings_passenger_id_fkey(*))`)
+          .select(`id, driver_id, origin, destination, departure_time, driver:profiles!rides_driver_id_fkey(id, full_name, email), passengers:ride_bookings(id, passenger_id, status, passenger:profiles!ride_bookings_passenger_id_fkey(id, full_name, email))`)
           .eq('driver_id', user.id)
           .order('departure_time', { ascending: false }),
-        
+
         supabase
           .from('passenger_ride_requests')
-          .select(`*, passenger:profiles!passenger_ride_requests_passenger_id_fkey(*)`)
+          .select(`id, passenger_id, status, created_at, passenger:profiles!passenger_ride_requests_passenger_id_fkey(id, full_name, email)`)
           .eq('passenger_id', user.id)
           .in('status', ['pending', 'open'])
           .order('created_at', { ascending: false }),
-        
+
         supabase
           .from('ride_bookings')
-          .select(`*, ride:rides(*, driver:profiles!rides_driver_id_fkey(*)), passenger:profiles!ride_bookings_passenger_id_fkey(*)`)
+          .select(`id, ride_id, passenger_id, status, ride:rides(id, origin, destination, departure_time, driver_id, driver:profiles!rides_driver_id_fkey(id, full_name, email)), passenger:profiles!ride_bookings_passenger_id_fkey(id, full_name, email)`)
           .eq('passenger_id', user.id)
           .order('created_at', { ascending: false }),
-        
+
         supabase
           .from('ride_bookings')
-          .select(`*, ride:rides(*), passenger:profiles!ride_bookings_passenger_id_fkey(*)`)
+          .select(`id, ride_id, driver_id, status, ride:rides(id, origin, destination, departure_time), passenger:profiles!ride_bookings_passenger_id_fkey(id, full_name, email)`)
           .eq('driver_id', user.id)
-          //.eq('status', 'pending')
-          .in('status', ['pending', 'accepted', 'confirmed'])
+          .in('status', ['pending', 'accepted']) // Only pending or accepted
           .order('created_at', { ascending: false })
-      ])
+      ]);
 
-      if (ridesResponse.error) throw ridesResponse.error
-      if (requestsResponse.error) throw requestsResponse.error
-      if (bookingsResponse.error) throw bookingsResponse.error
-      if (incomingResponse.error) throw incomingResponse.error
+      if (ridesResponse.error) throw ridesResponse.error;
+      if (requestsResponse.error) throw requestsResponse.error;
+      if (bookingsResponse.error) throw bookingsResponse.error;
+      if (incomingResponse.error) throw incomingResponse.error;
+
+      // Combine bookings for unread count calculation
+      let combinedBookings = [
+        ...(bookingsResponse.data || []),
+        ...(incomingResponse.data || [])
+      ];
+      // Fetch unread counts for all bookings
+      combinedBookings = await fetchUnreadCounts(combinedBookings);
 
       const newDashboardData = {
         myRides: ridesResponse.data || [],
         myRequests: requestsResponse.data || [],
-        myBookings: [
-  ...(bookingsResponse.data || []),
-  ...(incomingResponse.data || [])
-],
+        myBookings: combinedBookings,
         incomingRequests: incomingResponse.data || []
-      }
+      };
 
-      setDashboardData(newDashboardData)
-      setError(null)
-      setHasInitialLoad(true)
-
+      setDashboardData(newDashboardData);
+      setError(null);
+      setHasInitialLoad(true);
     } catch (err) {
-      console.error('Error fetching dashboard data:', err)
-      setError(err.message)
+      console.error('Error fetching dashboard data:', err);
+      setError(err.message);
       setDashboardData({
         myRides: [],
         myRequests: [],
         myBookings: [],
         incomingRequests: []
-      })
+      });
     } finally {
-      setLoading(false)
-      fetchingRef.current = false
+      setLoading(false);
+      fetchingRef.current = false;
     }
-  }, [])
+  }, [user, fetchUnreadCounts])
   
 
   useEffect(() => {
@@ -256,6 +248,31 @@ export const useDashboard = () => {
     }
   }
 
+  const refreshBookingsUnreadCounts = async () => {
+    try {
+      const { data: bookingsAsPassenger } = await supabase
+        .from('ride_bookings')
+        .select('*, ride:rides(*, driver:profiles!rides_driver_id_fkey(*)), passenger:profiles!ride_bookings_passenger_id_fkey(*)')
+        .eq('passenger_id', user.id);
+
+      const { data: bookingsAsDriver } = await supabase
+        .from('ride_bookings')
+        .select('*, ride:rides(*, driver:profiles!rides_driver_id_fkey(*)), passenger:profiles!ride_bookings_passenger_id_fkey(*)')
+        .eq('driver_id', user.id);
+
+      let bookings = [
+        ...(bookingsAsPassenger || []),
+        ...(bookingsAsDriver || [])
+      ];
+
+      bookings = await fetchUnreadCounts(bookings);
+      setDashboardData(data => ({ ...data, myBookings: bookings }));
+      console.log('📊 Dashboard bookings refreshed with unread counts');
+    } catch (error) {
+      console.error('Error refreshing bookings unread counts:', error);
+    }
+  };
+
   return {
     loading,
     myRides: dashboardData.myRides,
@@ -290,3 +307,30 @@ export const useDashboard = () => {
     }
   }
 }
+
+// Move refreshBookingsUnreadCounts outside useDashboard and export it
+
+export const refreshBookingsUnreadCounts = async (user, setDashboardData, fetchUnreadCounts) => {
+  try {
+    const { data: bookingsAsPassenger } = await supabase
+      .from('ride_bookings')
+      .select('*, ride:rides(*, driver:profiles!rides_driver_id_fkey(*)), passenger:profiles!ride_bookings_passenger_id_fkey(*)')
+      .eq('passenger_id', user.id);
+
+    const { data: bookingsAsDriver } = await supabase
+      .from('ride_bookings')
+      .select('*, ride:rides(*, driver:profiles!rides_driver_id_fkey(*)), passenger:profiles!ride_bookings_passenger_id_fkey(*)')
+      .eq('driver_id', user.id);
+
+    let bookings = [
+      ...(bookingsAsPassenger || []),
+      ...(bookingsAsDriver || [])
+    ];
+
+    bookings = await fetchUnreadCounts(bookings);
+    setDashboardData(data => ({ ...data, myBookings: bookings }));
+    console.log('📊 Dashboard bookings refreshed with unread counts');
+  } catch (error) {
+    console.error('Error refreshing bookings unread counts:', error);
+  }
+};

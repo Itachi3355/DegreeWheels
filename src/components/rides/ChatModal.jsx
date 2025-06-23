@@ -11,7 +11,7 @@ import useChat from '../../hooks/useChat' // ✅ Default import instead of named
 import ChatMessage from './ChatMessage'
 import ChatParticipants from './ChatParticipants'
 
-const ChatModal = ({ rideId, isOpen = true, onClose }) => {
+const ChatModal = ({ rideId, isOpen = true, onClose, onBookingUpdate }) => {
   const { user } = useAuth()
   const [message, setMessage] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -26,17 +26,14 @@ const ChatModal = ({ rideId, isOpen = true, onClose }) => {
     error
   } = useChat(rideId, isOpen)
 
-  // ✅ Auto-scroll to bottom when messages change
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: 'smooth',
-        block: 'end'
-      })
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
   }, [messages]) // Trigger when messages array changes
 
-  // ✅ Also scroll to bottom when modal opens
+  // Also scroll to bottom when modal opens
   useEffect(() => {
     if (isOpen && messages.length > 0) {
       setTimeout(() => {
@@ -49,6 +46,13 @@ const ChatModal = ({ rideId, isOpen = true, onClose }) => {
       }, 100) // Small delay to ensure DOM is ready
     }
   }, [isOpen, messages.length])
+
+  // Refresh bookings in parent component when modal opens
+  useEffect(() => {
+    if (isOpen && onBookingUpdate) {
+      onBookingUpdate() // This should trigger a bookings refresh in parent
+    }
+  }, [isOpen])
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -150,30 +154,32 @@ const ChatModal = ({ rideId, isOpen = true, onClose }) => {
                   <p>No messages yet. Start the conversation!</p>
                 </div>
               ) : (
-                messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                  >
+                <>
+                  {messages.map((msg) => (
                     <div
-                      className={`max-w-xs px-3 py-2 rounded-lg ${
-                        msg.sender_id === user?.id
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-200 text-gray-900'
-                      }`}
+                      key={msg.id}
+                      className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm">{msg.content}</p>
-                      <p className="text-xs opacity-75 mt-1">
-                        {new Date(msg.created_at).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+                      <div
+                        className={`max-w-xs px-3 py-2 rounded-lg ${
+                          msg.sender_id === user?.id
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-200 text-gray-900'
+                        }`}
+                      >
+                        <p className="text-sm">{msg.content}</p>
+                        <p className="text-xs opacity-75 mt-1">
+                          {new Date(msg.created_at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </>
               )}
-              {/* ✅ Scroll anchor - always at the bottom */}
+              {/* This anchor should be at the end */}
               <div ref={messagesEndRef} />
             </div>
 

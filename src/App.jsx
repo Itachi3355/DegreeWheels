@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './contexts/AuthContext'
 import Header from './components/layout/Header'
+import Footer from './components/layout/Footer'
 import ErrorBoundary from './components/common/ErrorBoundary'
 
 // Direct imports from components that actually exist
@@ -22,24 +23,10 @@ import MyRides from './components/rides/MyRides'
 import RideRequestForm from './components/rides/RideRequestForm'
 import RideOffer from './components/rides/RideOffer'
 import ContactUs from './components/pages/ContactUs'
-// Simple pages for missing components
-const TermsPage = () => (
-  <div className="min-h-screen bg-gray-50 pt-20 px-4">
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Terms of Service</h1>
-      <p className="text-gray-600">Terms of service content will be added here.</p>
-    </div>
-  </div>
-)
-
-const PrivacyPage = () => (
-  <div className="min-h-screen bg-gray-50 pt-20 px-4">
-    <div className="max-w-4xl mx-auto py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
-      <p className="text-gray-600">Privacy policy content will be added here.</p>
-    </div>
-  </div>
-)
+import ForgotPassword from './components/auth/ForgotPassword'
+import ResetPassword from './components/auth/ResetPassword'
+import TermsPage from './components/pages/TermsPage'
+import PrivacyPage from './components/pages/PrivacyPage'
 
 function App() {
   return (
@@ -51,11 +38,10 @@ function App() {
             v7_relativeSplatPath: true
           }}
         >
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col">
             <Toaster position="top-right" />
             <Header />
-            
-            <main className="pt-16">
+            <main className="pt-16 flex-1">
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
@@ -79,7 +65,7 @@ function App() {
                   } 
                 />
                 
-               
+                  
                 <Route path="/contact" element={<ContactUs />} />
                 
                 <Route 
@@ -195,8 +181,11 @@ function App() {
                 
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
               </Routes>
             </main>
+            <Footer />
           </div>
         </BrowserRouter>
       </AuthProvider>

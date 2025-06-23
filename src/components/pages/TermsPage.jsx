@@ -35,7 +35,7 @@ const TermsPage = () => {
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-            <p className="text-gray-600">Meet • Move • Share • Study</p>
+            <p className="text-gray-600">Meet • Move • Share • Save</p>
             <p className="text-sm text-gray-500 mt-2">Last updated: {new Date().toLocaleDateString()}</p>
           </div>
 
@@ -49,7 +49,7 @@ const TermsPage = () => {
                 <h2 className="text-xl font-semibold text-gray-900">1. Introduction</h2>
               </div>
               <p className="text-gray-700 leading-relaxed">
-                Welcome to DegreeWheels, the university rideshare platform that helps students <strong>Meet, Move, Share, and Study</strong> together. 
+                Welcome to DegreeWheels, the university rideshare platform that helps students <strong>Meet, Move, Share, and Save</strong> together. 
                 By using our service, you agree to these Terms of Service ("Terms"). Please read them carefully.
               </p>
             </section>
@@ -82,8 +82,8 @@ const TermsPage = () => {
                 <div className="flex items-start space-x-3">
                   <span className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center font-bold text-sm">S</span>
                   <div>
-                    <h3 className="font-semibold text-gray-900">STUDY</h3>
-                    <p className="text-sm text-gray-600">Turn travel time into productive study sessions with like-minded classmates.</p>
+                    <h3 className="font-semibold text-gray-900">SAVE</h3>
+                    <p className="text-sm text-gray-600">Save money and resources by sharing rides and making travel more affordable for everyone.</p>
                   </div>
                 </div>
               </div>

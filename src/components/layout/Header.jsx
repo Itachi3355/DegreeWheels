@@ -207,6 +207,7 @@ const Header = () => {
                 <span>{item.name}</span>
               </Link>
             ))}
+            {/* Terms & Privacy Links removed from header */}
           </div>
 
           {/* User Menu */}
@@ -409,30 +410,7 @@ const Header = () => {
                   <span>{item.name}</span>
                 </Link>
               ))}
-              
-              {user && (
-                <>
-                  <hr className="my-2" />
-                  <Link
-                    to="/profile"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-xl transition-colors"
-                  >
-                    <UserIcon className="w-5 h-5" />
-                    <span>Profile</span>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false)
-                      handleSignOut()
-                    }}
-                    className="flex items-center space-x-3 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                  >
-                    <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                    <span>Sign Out</span>
-                  </button>
-                </>
-              )}
+              {/* Terms & Privacy Links removed from mobile menu */}
             </div>
           </motion.div>
         )}

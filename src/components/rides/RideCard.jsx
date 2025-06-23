@@ -8,22 +8,9 @@ import {
   UserGroupIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline'
+import { formatDateInBrowserTz, formatTimeInBrowserTz } from '../../utils/timezone'
 
 const RideCard = ({ ride, onBook, onViewDetails }) => {
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -98,8 +85,11 @@ const RideCard = ({ ride, onBook, onViewDetails }) => {
               <ClockIcon className="w-5 h-5 text-indigo-500 mr-2" />
               <span className="text-sm text-gray-600">Departure</span>
             </div>
-            <p className="font-bold text-gray-900">{formatDate(ride.departure_time)}</p>
-            <p className="text-sm text-gray-700">{formatTime(ride.departure_time)}</p>
+            <p className="font-bold text-gray-900">
+              <span>
+                {formatDateInBrowserTz(ride.departure_time)} at {formatTimeInBrowserTz(ride.departure_time)}
+              </span>
+            </p>
           </div>
           
           <div className="bg-gray-50/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-100">

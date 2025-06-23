@@ -14,6 +14,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { formatDateInBrowserTz, formatTimeInBrowserTz } from '../../utils/timezone'
 
 const RideDetails = () => {
   const { id } = useParams()
@@ -216,7 +217,7 @@ const RideDetails = () => {
                   <div className="flex items-center">
                     <CalendarIcon className="w-4 h-4 mr-1" />
                     <span className="text-sm">
-                      {new Date(ride.departure_time).toLocaleDateString()}
+                      {formatDateInBrowserTz(ride.departure_time)} at {formatTimeInBrowserTz(ride.departure_time)}
                     </span>
                   </div>
                 </div>
@@ -255,7 +256,7 @@ const RideDetails = () => {
                       <div>
                         <p className="text-sm font-medium text-gray-700">Departure</p>
                         <p className="text-gray-900">
-                          {new Date(ride.departure_time).toLocaleString()}
+                          {formatDateInBrowserTz(ride.departure_time)} at {formatTimeInBrowserTz(ride.departure_time)}
                         </p>
                       </div>
                     </div>

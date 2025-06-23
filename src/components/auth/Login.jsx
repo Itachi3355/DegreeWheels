@@ -82,7 +82,11 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      {/* Illustration Banner */}
+      <div className="w-full flex justify-center pt-8 pb-4">
+        {/* Logo removed as requested */}
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -90,6 +94,8 @@ const Login = () => {
         className="max-w-md w-full space-y-8"
       >
         <div className="bg-white rounded-lg shadow-lg p-8">
+          {/* Logo removed as requested */}
+
           {/* Header */}
           <div className="text-center">
             <div className="mx-auto h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
@@ -98,7 +104,7 @@ const Login = () => {
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to your Campus RideShare account</p>
+            <p className="text-gray-600">Sign in to your DegreeWheels account</p>
           </div>
 
           {/* Form */}
@@ -122,7 +128,7 @@ const Login = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     className="appearance-none relative block w-full pl-10 pr-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                    placeholder="Enter your email"
+                    placeholder="new@myunt.edu"
                   />
                 </div>
               </div>
@@ -145,7 +151,7 @@ const Login = () => {
                     value={formData.password}
                     onChange={handleInputChange}
                     className="appearance-none relative block w-full pl-10 pr-10 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                    placeholder="Enter your password"
+                    placeholder="••••••"
                   />
                   <button
                     type="button"
@@ -176,9 +182,12 @@ const Login = () => {
                 </label>
               </div>
               <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                <Link
+                  to="/forgot-password"
+                  className="font-medium text-blue-600 hover:text-blue-500"
+                >
                   Forgot your password?
-                </a>
+                </Link>
               </div>
             </div>
 
@@ -226,7 +235,7 @@ const Login = () => {
                 onClick={() => {
                   setFormData({
                     email: 'demo@myunt.edu',
-                    password: 'demo123456'
+                    password: 'Demo123456'
                   })
                 }}
                 className="text-xs text-blue-600 hover:text-blue-500 underline"

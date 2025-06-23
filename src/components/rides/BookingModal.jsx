@@ -10,8 +10,10 @@ import {
   PhoneIcon
 } from '@heroicons/react/24/outline'
 import { useBookings } from '../../hooks/useBookings'
+import { useAuth } from '../../contexts/AuthContext' // <-- Add this import
 
 const BookingModal = ({ ride, isOpen, onClose, onConfirm }) => {
+  const { user } = useAuth() // <-- Add this line
   const { bookRide } = useBookings()
   const [formData, setFormData] = useState({
     seats: 1,
@@ -24,6 +26,12 @@ const BookingModal = ({ ride, isOpen, onClose, onConfirm }) => {
     e.preventDefault()
     setIsSubmitting(true)
     
+    // Prevent booking own ride
+    if (ride.driver_id === user.id) {
+      alert("You can't book your own ride.")
+      return
+    }
+
     try {
       await bookRide(
         ride.id,
