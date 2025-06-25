@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 import { createClient } from '@supabase/supabase-js'
 
 // Use process.env instead of import.meta.env

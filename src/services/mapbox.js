@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 import mapboxgl from 'mapbox-gl';
 
 mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';

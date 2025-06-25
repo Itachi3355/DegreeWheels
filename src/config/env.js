@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 // File: src/config/env.js
 // Create this file to validate environment variables
 

@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 # 🎓 DegreeWheels - University Rideshare Platform
 
 **Meet • Move • Share • Study (MMSS)**
@@ -41,3 +46,6 @@ DegreeWheels is the premier rideshare platform designed specifically for univers
 *DegreeWheels - Where education meets transportation* 🎓🚗
 
 **Developed by MMSS** - Connecting students, one ride at a time.
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

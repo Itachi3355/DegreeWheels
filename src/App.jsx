@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'

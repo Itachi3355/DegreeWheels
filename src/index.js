@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 console.log('🚀 INDEX.JS LOADED - React App Starting')
 console.log('🚀 Date:', new Date().toISOString())
 console.log('🚀 Environment Variables Check:', {

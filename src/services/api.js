@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 DegreeWheels
+ * Licensed under the MIT License
+ */
+
 import { supabase } from './supabase';
 
 const API_URL = 'https://your-api-url.com'; // Replace with your actual API URL
