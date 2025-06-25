@@ -118,6 +118,8 @@ const CreateRideForm = ({ onSuccess }) => {
       const rideData = {
         origin: formData.origin,
         destination: formData.destination,
+        origin_coordinates: formData.originCoordinates, // <-- add this
+        destination_coordinates: formData.destinationCoordinates, // <-- add this
         departure_time: `${formData.departure_date}T${formData.departure_time}:00`,
         available_seats: parseInt(formData.available_seats),
         description: formData.description

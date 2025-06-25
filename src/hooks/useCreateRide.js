@@ -38,12 +38,20 @@ export const useCreateRide = () => {
         throw new Error('Available seats must be between 1 and 8')
       }
 
+      // Convert coordinates to Postgres point format
+      const toPointString = (coords) =>
+        Array.isArray(coords) && coords.length === 2
+          ? `(${coords[0]},${coords[1]})`
+          : null;
+
       // Prepare ride data for database
       const availableSeats = parseInt(rideData.available_seats)
       const ridePayload = {
         driver_id: user.id,
         origin: rideData.origin.trim(),
         destination: rideData.destination.trim(),
+        origin_coordinates: toPointString(rideData.origin_coordinates), // <-- convert to point
+        destination_coordinates: toPointString(rideData.destination_coordinates), // <-- convert to point
         departure_time: departureTime.toISOString(),
         available_seats: availableSeats,
         total_seats: availableSeats, // Add total_seats field
