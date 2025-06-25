@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2025 DegreeWheels
- * Licensed under the MIT License
- */
-
 # 🎓 DegreeWheels - University Rideshare Platform
 
 **Meet • Move • Share • Study (MMSS)**
